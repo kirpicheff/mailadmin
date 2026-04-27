@@ -6,20 +6,23 @@
         <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">Войдите в панель управления</p>
       </div>
       <form class="mt-8 space-y-6" @submit.prevent="handleLogin">
+        <div v-if="error" class="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm text-center">
+          {{ error }}
+        </div>
         <div class="space-y-4">
           <div>
             <label for="username" class="sr-only">Username</label>
-            <input id="username" name="username" type="text" required class="appearance-none rounded-xl relative block w-full px-4 py-3 border border-slate-300 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:outline-none focus:ring-mail-blue-500 focus:border-mail-blue-500 sm:text-sm" placeholder="Имя пользователя" />
+            <input v-model="username" id="username" name="username" type="text" required class="appearance-none rounded-xl relative block w-full px-4 py-3 border border-slate-300 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:outline-none focus:ring-mail-blue-500 focus:border-mail-blue-500 sm:text-sm" placeholder="Имя пользователя" />
           </div>
           <div>
             <label for="password" class="sr-only">Password</label>
-            <input id="password" name="password" type="password" required class="appearance-none rounded-xl relative block w-full px-4 py-3 border border-slate-300 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:outline-none focus:ring-mail-blue-500 focus:border-mail-blue-500 sm:text-sm" placeholder="Пароль" />
+            <input v-model="password" id="password" name="password" type="password" required class="appearance-none rounded-xl relative block w-full px-4 py-3 border border-slate-300 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:outline-none focus:ring-mail-blue-500 focus:border-mail-blue-500 sm:text-sm" placeholder="Пароль" />
           </div>
         </div>
 
         <div>
-          <button type="submit" class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-xl text-white bg-mail-blue-600 hover:bg-mail-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-mail-blue-500 transition-all">
-            Войти
+          <button :disabled="loading" type="submit" class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-xl text-white bg-mail-blue-600 hover:bg-mail-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-mail-blue-500 transition-all disabled:opacity-50">
+            {{ loading ? 'Вход...' : 'Войти' }}
           </button>
         </div>
       </form>
@@ -28,10 +31,33 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/store/auth'
+
 const router = useRouter()
-const handleLogin = () => {
-  // Заглушка
-  router.push('/')
+const authStore = useAuthStore()
+
+const username = ref('')
+const password = ref('')
+const error = ref('')
+const loading = ref(false)
+
+const handleLogin = async () => {
+  loading.value = true
+  error.value = ''
+  
+  try {
+    await authStore.login(username.value.trim(), password.value)
+    router.push('/')
+  } catch (err) {
+    if (err.response?.status === 401) {
+      error.value = 'Неверное имя пользователя или пароль'
+    } else {
+      error.value = 'Ошибка сервера. Попробуйте позже.'
+    }
+  } finally {
+    loading.value = false
+  }
 }
 </script>

@@ -1,13 +1,26 @@
 @import "tailwindcss";
+@variant dark (&:where(.dark, .dark *));
 
-@layer base {
-  body {
-    @apply bg-slate-50 text-slate-900 transition-colors duration-300;
-  }
+@theme {
+  --color-mail-blue-50: #f0f7ff;
+  --color-mail-blue-100: #e0effe;
+  --color-mail-blue-500: #3b82f6;
+  --color-mail-blue-600: #2563eb;
+  --color-mail-blue-700: #1d4ed8;
 }
 
-.dark body {
-  @apply bg-slate-950 text-slate-100;
+@layer base {
+  html {
+    @apply bg-slate-50 text-slate-900 transition-colors duration-500;
+  }
+  
+  html.dark {
+    @apply bg-slate-950 text-slate-50;
+  }
+
+  body {
+    @apply bg-transparent;
+  }
 }
 
 @layer components {

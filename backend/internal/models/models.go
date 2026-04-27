@@ -4,69 +4,140 @@ import (
 	"time"
 )
 
-// Domain представляет почтовый домен
+// Admin представляет таблицу admin
+type Admin struct {
+	Username       string    `gorm:"primaryKey;column:username;size:255" json:"username"`
+	Password       string    `gorm:"column:password;size:255" json:"password"`
+	Created        time.Time `gorm:"column:created;not null;default:'2000-01-01 00:00:00'" json:"created"`
+	Modified       time.Time `gorm:"column:modified;not null;default:'2000-01-01 00:00:00'" json:"modified"`
+	Active         bool      `gorm:"column:active;not null;default:1" json:"active"`
+	SuperAdmin     bool      `gorm:"column:superadmin;not null;default:0" json:"superadmin"`
+	Phone          string    `gorm:"column:phone;size:30;default:''" json:"phone"`
+	EmailOther     string    `gorm:"column:email_other;size:255;default:''" json:"email_other"`
+	Token          string    `gorm:"column:token;size:255;default:''" json:"token"`
+	TokenValidity  time.Time `gorm:"column:token_validity;not null;default:'2000-01-01 00:00:00'" json:"token_validity"`
+	// Убираем строгое NOT NULL для успешной миграции существующих строк
+	PasswordExpiry time.Time `gorm:"column:password_expiry" json:"password_expiry"`
+}
+
+func (Admin) TableName() string { return "admin" }
+
+// Domain представляет таблицу domain
 type Domain struct {
 	Domain         string    `gorm:"primaryKey;column:domain;size:255" json:"domain"`
-	Description    string    `gorm:"column:description;size:255" json:"description,omitempty"`
+	Description    string    `gorm:"column:description;size:255" json:"description"`
 	Aliases        int       `gorm:"column:aliases;default:0" json:"aliases"`
 	Mailboxes      int       `gorm:"column:mailboxes;default:0" json:"mailboxes"`
 	MaxQuota       int64     `gorm:"column:maxquota;default:0" json:"maxquota"`
 	Quota          int64     `gorm:"column:quota;default:0" json:"quota"`
-	Transport      string    `gorm:"column:transport;size:255" json:"transport,omitempty"`
-	BackupMX       bool      `gorm:"column:backupmx;default:false" json:"backupmx"`
-	Created        time.Time `gorm:"column:created;autoCreateTime" json:"created"`
-	Modified       time.Time `gorm:"column:modified;autoUpdateTime" json:"modified"`
-	Active         bool      `gorm:"column:active;default:true" json:"active"`
-	PasswordExpiry int       `gorm:"column:password_expiry;default:0" json:"password_expiry"`
+	Transport      string    `gorm:"column:transport;size:255" json:"transport"`
+	BackupMX       bool      `gorm:"column:backupmx;default:0" json:"backupmx"`
+	Created        time.Time `gorm:"column:created;not null;default:'2000-01-01 00:00:00'" json:"created"`
+	Modified       time.Time `gorm:"column:modified;not null;default:'2000-01-01 00:00:00'" json:"modified"`
+	Active         bool      `gorm:"column:active;default:1" json:"active"`
+	PasswordExpiry int       `gorm:"column:password_expiry;default:0" json:"password_expiry"` // В днях
 }
 
 func (Domain) TableName() string { return "domain" }
 
-// Mailbox представляет почтовый ящик
+// DomainAdmin представляет таблицу domain_admins
+type DomainAdmin struct {
+	ID       uint      `gorm:"primaryKey;autoIncrement;column:id" json:"id"`
+	Username string    `gorm:"column:username;size:255" json:"username"`
+	Domain   string    `gorm:"column:domain;size:255" json:"domain"`
+	Created  time.Time `gorm:"column:created;not null;default:'2000-01-01 00:00:00'" json:"created"`
+	Active   bool      `gorm:"column:active;default:1" json:"active"`
+}
+
+func (DomainAdmin) TableName() string { return "domain_admins" }
+
+// Mailbox представляет таблицу mailbox
 type Mailbox struct {
 	Username       string    `gorm:"primaryKey;column:username;size:255" json:"username"`
-	Password       string    `gorm:"column:password;size:255" json:"-"`
-	Name           string    `gorm:"column:name;size:255" json:"name,omitempty"`
-	MailDir        string    `gorm:"column:maildir;size:255" json:"maildir"`
+	Password       string    `gorm:"column:password;size:255" json:"password"`
+	Name           string    `gorm:"column:name;size:255" json:"name"`
+	Maildir        string    `gorm:"column:maildir;size:255" json:"maildir"`
 	Quota          int64     `gorm:"column:quota;default:0" json:"quota"`
 	LocalPart      string    `gorm:"column:local_part;size:255" json:"local_part"`
 	Domain         string    `gorm:"column:domain;size:255" json:"domain"`
-	Created        time.Time `gorm:"column:created;autoCreateTime" json:"created"`
-	Modified       time.Time `gorm:"column:modified;autoUpdateTime" json:"modified"`
-	Active         bool      `gorm:"column:active;default:true" json:"active"`
-	Phone          string    `gorm:"column:phone;size:30" json:"phone,omitempty"`
-	EmailOther     string    `gorm:"column:email_other;size:255" json:"email_other,omitempty"`
-	Token          string    `gorm:"column:token;size:255" json:"-"`
-	TokenValidity  time.Time `gorm:"column:token_validity" json:"-"`
-	PasswordExpiry time.Time `gorm:"column:password_expiry" json:"-"`
+	Created        time.Time `gorm:"column:created;not null;default:'2000-01-01 00:00:00'" json:"created"`
+	Modified       time.Time `gorm:"column:modified;not null;default:'2000-01-01 00:00:00'" json:"modified"`
+	Active         bool      `gorm:"column:active;default:1" json:"active"`
+	Phone          string    `gorm:"column:phone;size:30;default:''" json:"phone"`
+	EmailOther     string    `gorm:"column:email_other;size:255;default:''" json:"email_other"`
+	Token          string    `gorm:"column:token;size:255;default:''" json:"token"`
+	TokenValidity  time.Time `gorm:"column:token_validity;not null;default:'2000-01-01 00:00:00'" json:"token_validity"`
+	PasswordExpiry time.Time `gorm:"column:password_expiry;not null;default:'2000-01-01 00:00:00'" json:"password_expiry"`
 }
 
 func (Mailbox) TableName() string { return "mailbox" }
 
-// Alias представляет алиас
+// Alias представляет таблицу alias
 type Alias struct {
 	Address  string    `gorm:"primaryKey;column:address;size:255" json:"address"`
-	Goto     string    `gorm:"column:goto;type:text" json:"goto"` // Используем type:text для длинных списков
+	Goto     string    `gorm:"column:goto;type:text" json:"goto"`
 	Domain   string    `gorm:"column:domain;size:255" json:"domain"`
-	Created  time.Time `gorm:"column:created;autoCreateTime" json:"created"`
-	Modified time.Time `gorm:"column:modified;autoUpdateTime" json:"modified"`
-	Active   bool      `gorm:"column:active;default:true" json:"active"`
+	Created  time.Time `gorm:"column:created;not null;default:'2000-01-01 00:00:00'" json:"created"`
+	Modified time.Time `gorm:"column:modified;not null;default:'2000-01-01 00:00:00'" json:"modified"`
+	Active   bool      `gorm:"column:active;default:1" json:"active"`
 }
 
 func (Alias) TableName() string { return "alias" }
 
-// Admin представляет администратора
-type Admin struct {
-	Username      string    `gorm:"primaryKey;column:username;size:255" json:"username"`
-	Password      string    `gorm:"column:password;size:255" json:"-"`
-	Created       time.Time `gorm:"column:created;autoCreateTime" json:"created"`
-	Modified      time.Time `gorm:"column:modified;autoUpdateTime" json:"modified"`
-	Active        bool      `gorm:"column:active;default:true" json:"active"`
-	SuperAdmin    bool      `gorm:"column:superadmin;default:false" json:"superadmin"`
-	Phone         string    `gorm:"column:phone;size:30" json:"phone,omitempty"`
-	EmailOther    string    `gorm:"column:email_other;size:255" json:"email_other,omitempty"`
-	Token         string    `gorm:"column:token;size:255" json:"-"`
-	TokenValidity time.Time `gorm:"column:token_validity" json:"-"`
+// AliasDomain представляет таблицу alias_domain
+type AliasDomain struct {
+	AliasDomain  string    `gorm:"primaryKey;column:alias_domain;size:255" json:"alias_domain"`
+	TargetDomain string    `gorm:"column:target_domain;size:255" json:"target_domain"`
+	Created      time.Time `gorm:"column:created;not null;default:'2000-01-01 00:00:00'" json:"created"`
+	Modified     time.Time `gorm:"column:modified;not null;default:'2000-01-01 00:00:00'" json:"modified"`
+	Active       bool      `gorm:"column:active;default:1" json:"active"`
 }
 
-func (Admin) TableName() string { return "admin" }
+func (AliasDomain) TableName() string { return "alias_domain" }
+
+// Log представляет таблицу log
+type Log struct {
+	ID        uint      `gorm:"primaryKey;autoIncrement;column:id" json:"id"`
+	Timestamp time.Time `gorm:"column:timestamp;not null;default:'2000-01-01 00:00:00'" json:"timestamp"`
+	Username  string    `gorm:"column:username;size:255" json:"username"`
+	Domain    string    `gorm:"column:domain;size:255" json:"domain"`
+	Action    string    `gorm:"column:action;size:255" json:"action"`
+	Data      string    `gorm:"column:data;type:text" json:"data"`
+}
+
+func (Log) TableName() string { return "log" }
+
+// Quota2 представляет таблицу quota2
+type Quota2 struct {
+	Username string `gorm:"primaryKey;column:username;size:255" json:"username"`
+	Bytes    int64  `gorm:"column:bytes;default:0" json:"bytes"`
+	Messages int    `gorm:"column:messages;default:0" json:"messages"`
+}
+
+func (Quota2) TableName() string { return "quota2" }
+
+// Config представляет таблицу config
+type AppConfig struct {
+	ID    uint   `gorm:"primaryKey;autoIncrement;column:id" json:"id"`
+	Name  string `gorm:"column:name;size:20;unique" json:"name"`
+	Value string `gorm:"column:value;size:20" json:"value"`
+}
+
+func (AppConfig) TableName() string { return "config" }
+
+// Vacation представляет таблицу vacation
+type Vacation struct {
+	Email        string    `gorm:"primaryKey;column:email;size:255" json:"email"`
+	Subject      string    `gorm:"column:subject;size:255" json:"subject"`
+	Body         string    `gorm:"column:body;type:text" json:"body"`
+	Cache        string    `gorm:"column:cache;type:text" json:"cache"`
+	Domain       string    `gorm:"column:domain;size:255" json:"domain"`
+	Created      time.Time `gorm:"column:created;not null;default:'2000-01-01 00:00:00'" json:"created"`
+	Active       bool      `gorm:"column:active;default:1" json:"active"`
+	Modified     time.Time `gorm:"column:modified;autoUpdateTime" json:"modified"`
+	ActiveFrom   time.Time `gorm:"column:activefrom;not null;default:'1999-12-31 21:00:00'" json:"activefrom"`
+	ActiveUntil  time.Time `gorm:"column:activeuntil;not null;default:'2038-01-17 21:00:00'" json:"activeuntil"`
+	IntervalTime int       `gorm:"column:interval_time;default:0" json:"interval_time"`
+}
+
+func (Vacation) TableName() string { return "vacation" }

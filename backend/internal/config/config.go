@@ -5,8 +5,8 @@ import (
 )
 
 type Config struct {
-	DBDSN     string
-	JWTSecret string
+	DBDSN      string
+	JWTSecret  string
 	ListenAddr string
 }
 
@@ -14,7 +14,7 @@ func LoadConfig() *Config {
 	dsn := os.Getenv("DB_DSN")
 	if dsn == "" {
 		// Дефолт для разработки: user:pass@tcp(127.0.0.1:3306)/mailadmin?charset=utf8mb4&parseTime=True&loc=Local
-		dsn = "root:root@tcp(127.0.0.1:3306)/mailadmin?charset=utf8mb4&parseTime=True&loc=Local"
+		dsn = "postfix:password@tcp(192.168.35.4:3307)/postfix?charset=utf8mb4&parseTime=True&loc=Local"
 	}
 
 	secret := os.Getenv("JWT_SECRET")
@@ -28,8 +28,8 @@ func LoadConfig() *Config {
 	}
 
 	return &Config{
-		DBDSN:     dsn,
-		JWTSecret: secret,
+		DBDSN:      dsn,
+		JWTSecret:  secret,
 		ListenAddr: addr,
 	}
 }

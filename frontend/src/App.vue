@@ -1,22 +1,38 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useAuthStore } from '@/store/auth'
 
+const authStore = useAuthStore()
 const isDarkMode = ref(false)
 const route = useRoute()
 const router = useRouter()
 
+// Список страниц без сайдбара
+const fullScreenPages = ['/login', '/change-password']
+const isFullScreen = computed(() => fullScreenPages.includes(route.path))
+
 const toggleTheme = () => {
   isDarkMode.value = !isDarkMode.value
-  document.documentElement.classList.toggle('dark', isDarkMode.value)
+  const html = document.documentElement
+  html.classList.toggle('dark', isDarkMode.value)
+  html.style.colorScheme = isDarkMode.value ? 'dark' : 'light'
   localStorage.setItem('theme', isDarkMode.value ? 'dark' : 'light')
+}
+
+const handleLogout = async () => {
+  await authStore.logout()
+  router.push('/login')
 }
 
 onMounted(() => {
   const savedTheme = localStorage.getItem('theme')
-  if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+  
+  if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
     isDarkMode.value = true
     document.documentElement.classList.add('dark')
+    document.documentElement.style.colorScheme = 'dark'
   }
 })
 
@@ -24,11 +40,12 @@ const menuItems = [
   { name: 'Дашборд', path: '/', icon: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z' },
   { name: 'Домены', path: '/domains', icon: 'M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9' },
   { name: 'Почтовые ящики', path: '/mailboxes', icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
+  { name: 'Настройки доступа', path: '/settings/admins', icon: 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z' },
 ]
 </script>
 
 <template>
-  <div v-if="route.path === '/login'">
+  <div v-if="isFullScreen">
     <router-view />
   </div>
   
@@ -61,7 +78,7 @@ const menuItems = [
         <!-- Theme Toggle -->
         <button 
           @click="toggleTheme"
-          class="flex items-center gap-3 px-4 py-2 w-full rounded-xl hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors"
+          class="flex items-center gap-3 px-4 py-2 w-full rounded-xl hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors text-slate-700 dark:text-slate-300"
         >
           <template v-if="isDarkMode">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -77,12 +94,25 @@ const menuItems = [
           </template>
         </button>
 
+        <!-- Logout Button -->
+        <button 
+          @click="handleLogout"
+          class="flex items-center gap-3 px-4 py-2 w-full rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 transition-colors"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          <span class="text-sm font-medium">Выйти</span>
+        </button>
+
         <!-- User Info Slot -->
-        <div class="flex items-center gap-3 px-2">
-          <div class="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold">A</div>
+        <div class="flex items-center gap-3 px-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <div class="w-10 h-10 rounded-full bg-mail-blue-100 dark:bg-mail-blue-900/30 text-mail-blue-600 flex items-center justify-center font-bold">
+            {{ authStore.user?.username?.charAt(0).toUpperCase() || 'A' }}
+          </div>
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-bold truncate">Админ</p>
-            <p class="text-xs text-slate-500 truncate">superadmin</p>
+            <p class="text-sm font-bold truncate text-slate-900 dark:text-white">{{ authStore.user?.username }}</p>
+            <p class="text-xs text-slate-500 truncate">{{ authStore.user?.superadmin ? 'Superadmin' : 'Domain Admin' }}</p>
           </div>
         </div>
       </div>

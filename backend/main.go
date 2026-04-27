@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/user/mailadmin/internal/api"
 	"github.com/user/mailadmin/internal/config"
 	"github.com/user/mailadmin/internal/db"
 	"net/http"
@@ -12,26 +13,41 @@ func main() {
 	// Загружаем конфиг
 	cfg := config.LoadConfig()
 
-	// Инициализируем БД (пока без запуска, если базы нет - упадет)
-	// db.InitDB(cfg.DBDSN)
+	// Инициализируем БД
+	db.InitDB(cfg.DBDSN)
 
 	e := echo.New()
 
 	// Middleware
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
-	e.Use(middleware.CORS())
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins:     []string{"http://localhost:5173", "http://localhost:5174"}, // Для разработки
+		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
+		AllowCredentials: true,
+	}))
 
 	// Группа API
-	api := e.Group("/api")
+	apiGroup := e.Group("/api")
 
 	// Тестовый маршрут
-	api.GET("/status", func(c echo.Context) error {
+	apiGroup.GET("/status", func(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]string{
 			"status": "online",
 			"message": "MailAdmin API is running",
 		})
 	})
+
+	// Маршруты авторизации
+	authGroup := apiGroup.Group("/auth")
+	api.RegisterAuthHandlers(authGroup, cfg)
+
+	// Маршруты управления админами
+	api.RegisterAdminHandlers(apiGroup, cfg.JWTSecret)
+
+	// Маршруты управления доменами
+	domainGroup := apiGroup.Group("/domains")
+	api.RegisterDomainHandlers(domainGroup)
 
 	// Запуск сервера
 	e.Logger.Fatal(e.Start(cfg.ListenAddr))

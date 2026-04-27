@@ -22,6 +22,12 @@ func InitDB(dsn string) {
 		&models.Mailbox{},
 		&models.Alias{},
 		&models.Admin{},
+		&models.DomainAdmin{},
+		&models.AliasDomain{},
+		&models.Log{},
+		&models.Quota2{},
+		&models.AppConfig{},
+		&models.Vacation{},
 	)
 	if err != nil {
 		log.Fatalf("failed to migrate database: %v", err)

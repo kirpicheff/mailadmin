@@ -36,3 +36,4 @@ frontend/stats.html
 # Database
 *.db
 *.sqlite
+*.md
