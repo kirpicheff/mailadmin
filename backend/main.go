@@ -49,6 +49,12 @@ func main() {
 	domainGroup := apiGroup.Group("/domains")
 	api.RegisterDomainHandlers(domainGroup)
 
+	// Маршруты управления ящиками
+	api.RegisterMailboxHandlers(apiGroup, cfg.JWTSecret)
+
+	// Маршруты управления алиасами
+	api.RegisterAliasHandlers(apiGroup, cfg.JWTSecret)
+
 	// Запуск сервера
 	e.Logger.Fatal(e.Start(cfg.ListenAddr))
 }
