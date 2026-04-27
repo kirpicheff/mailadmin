@@ -1,0 +1,38 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Go
+backend/bin/
+backend/dist/
+backend/vendor/
+backend/*.exe
+backend/*.test
+backend/.env
+
+# Node / Vue
+node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+frontend/stats.html
+
+# Database
+*.db
+*.sqlite

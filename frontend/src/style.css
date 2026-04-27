@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 transition-colors duration-300;
+  }
+}
+
+.dark body {
+  @apply bg-slate-950 text-slate-100;
+}
+
+@layer components {
+  .glass-panel {
+    @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-xl rounded-2xl;
+  }
+  
+  .dark .glass-panel {
+    @apply bg-slate-900/70 border-slate-700/50 shadow-slate-950/50;
+  }
+  
+  .sidebar-link {
+    @apply flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-slate-600 hover:bg-slate-200/50 hover:text-slate-950;
+  }
+  
+  .dark .sidebar-link {
+    @apply text-slate-400 hover:bg-slate-800/50 hover:text-slate-100;
+  }
+  
+  .sidebar-link.active {
+    @apply bg-blue-500 text-white shadow-lg shadow-blue-500/30;
+  }
+}
