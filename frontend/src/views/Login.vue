@@ -2,8 +2,8 @@
   <div class="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-900 px-4">
     <div class="max-w-md w-full glass-panel p-10 space-y-8">
       <div class="text-center">
-        <h2 class="text-3xl font-extrabold text-slate-900 dark:text-white">MailAdmin 2026</h2>
-        <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">Войдите в панель управления</p>
+        <h2 class="text-3xl font-extrabold text-slate-900 dark:text-white">{{ t('login.title') }}</h2>
+        <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">{{ t('login.subtitle') }}</p>
       </div>
       <form class="mt-8 space-y-6" @submit.prevent="handleLogin">
         <div v-if="error" class="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm text-center">
@@ -12,17 +12,17 @@
         <div class="space-y-4">
           <div>
             <label for="username" class="sr-only">Username</label>
-            <input v-model="username" id="username" name="username" type="text" required class="appearance-none rounded-xl relative block w-full px-4 py-3 border border-slate-300 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:outline-none focus:ring-mail-blue-500 focus:border-mail-blue-500 sm:text-sm" placeholder="Имя пользователя" />
+            <input v-model="username" id="username" name="username" type="text" required class="appearance-none rounded-xl relative block w-full px-4 py-3 border border-slate-300 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:outline-none focus:ring-mail-blue-500 focus:border-mail-blue-500 sm:text-sm" :placeholder="t('login.username')" />
           </div>
           <div>
             <label for="password" class="sr-only">Password</label>
-            <input v-model="password" id="password" name="password" type="password" required class="appearance-none rounded-xl relative block w-full px-4 py-3 border border-slate-300 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:outline-none focus:ring-mail-blue-500 focus:border-mail-blue-500 sm:text-sm" placeholder="Пароль" />
+            <input v-model="password" id="password" name="password" type="password" required class="appearance-none rounded-xl relative block w-full px-4 py-3 border border-slate-300 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:outline-none focus:ring-mail-blue-500 focus:border-mail-blue-500 sm:text-sm" :placeholder="t('login.password')" />
           </div>
         </div>
 
         <div>
           <button :disabled="loading" type="submit" class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-xl text-white bg-mail-blue-600 hover:bg-mail-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-mail-blue-500 transition-all disabled:opacity-50">
-            {{ loading ? 'Вход...' : 'Войти' }}
+            {{ loading ? t('login.loading') : t('login.button') }}
           </button>
         </div>
       </form>
@@ -34,9 +34,11 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/auth'
+import { useI18n } from 'vue-i18n'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { t } = useI18n()
 
 const username = ref('')
 const password = ref('')
@@ -52,9 +54,9 @@ const handleLogin = async () => {
     router.push('/')
   } catch (err) {
     if (err.response?.status === 401) {
-      error.value = 'Неверное имя пользователя или пароль'
+      error.value = t('login.errors.invalid')
     } else {
-      error.value = 'Ошибка сервера. Попробуйте позже.'
+      error.value = t('login.errors.server')
     }
   } finally {
     loading.value = false

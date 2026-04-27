@@ -1,6 +1,9 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import api from '@/api/axios'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const logs = ref([])
 const loading = ref(true)
@@ -29,18 +32,18 @@ const fetchLogs = async () => {
 const translateAction = (action) => {
   if (!action) return ''
   const dictionary = {
-    'create_domain': 'Создание домена',
-    'update_domain': 'Изменение домена',
-    'delete_domain': 'Удаление домена',
-    'create_mailbox': 'Создание ящика',
-    'update_mailbox': 'Изменение ящика',
-    'delete_mailbox': 'Удаление ящика',
-    'create_alias': 'Создание алиаса',
-    'update_alias': 'Изменение алиаса',
-    'delete_alias': 'Удаление алиаса',
-    'create_admin': 'Новый администратор',
-    'delete_admin': 'Удаление администратора',
-    'login': 'Вход в систему'
+    'create_domain': t('actions.create_domain'),
+    'update_domain': t('actions.update_domain'),
+    'delete_domain': t('actions.delete_domain'),
+    'create_mailbox': t('actions.create_mailbox'),
+    'update_mailbox': t('actions.update_mailbox'),
+    'delete_mailbox': t('actions.delete_mailbox'),
+    'create_alias': t('actions.create_alias'),
+    'update_alias': t('actions.update_alias'),
+    'delete_alias': t('actions.delete_alias'),
+    'create_admin': t('actions.create_admin'),
+    'delete_admin': t('actions.delete_admin'),
+    'login': t('actions.login')
   }
   return dictionary[action.toLowerCase()] || action
 }
@@ -58,8 +61,8 @@ onMounted(fetchLogs)
   <div class="space-y-6">
     <header class="flex justify-between items-center">
       <div>
-        <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white text-left">Журнал аудита</h1>
-        <p class="text-slate-500 dark:text-slate-400 text-left">История всех действий администраторов в системе</p>
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white text-left">{{ t('logs.title') }}</h1>
+        <p class="text-slate-500 dark:text-slate-400 text-left">{{ t('logs.subtitle') }}</p>
       </div>
     </header>
 
@@ -68,11 +71,11 @@ onMounted(fetchLogs)
         <table class="w-full text-left">
           <thead>
             <tr class="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
-              <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Дата и время</th>
-              <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Администратор</th>
-              <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Домен</th>
-              <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Действие</th>
-              <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Объект / Данные</th>
+              <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{{ t('logs.table.datetime') }}</th>
+              <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{{ t('logs.table.admin') }}</th>
+              <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{{ t('logs.table.domain') }}</th>
+              <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{{ t('logs.table.action') }}</th>
+              <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{{ t('logs.table.data') }}</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
@@ -80,7 +83,7 @@ onMounted(fetchLogs)
               <td colspan="5" class="px-6 py-4"><div class="h-4 bg-slate-100 dark:bg-slate-800 rounded w-full"></div></td>
             </tr>
             <tr v-else-if="logs.length === 0">
-              <td colspan="5" class="px-6 py-12 text-center text-slate-400 italic">Нет записей в журнале</td>
+              <td colspan="5" class="px-6 py-12 text-center text-slate-400 italic">{{ t('logs.no_entries') }}</td>
             </tr>
             <tr v-for="log in logs" :key="log.id" class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
               <td class="px-6 py-4 text-sm font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">
@@ -115,7 +118,7 @@ onMounted(fetchLogs)
       <!-- Пагинация -->
       <div class="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/30 dark:bg-slate-800/30">
         <div class="text-sm text-slate-500">
-          Показано {{ logs.length }} из {{ totalLogs }} записей
+          {{ t('logs.pagination.shown') }} {{ logs.length }} {{ t('logs.pagination.of') }} {{ totalLogs }} {{ t('logs.pagination.entries') }}
         </div>
         <div class="flex gap-2">
           <button 
@@ -123,14 +126,14 @@ onMounted(fetchLogs)
             :disabled="page === 1 || loading"
             class="px-4 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-bold disabled:opacity-50 transition-all hover:bg-slate-50 dark:hover:bg-slate-700"
           >
-            Назад
+            {{ t('logs.pagination.prev') }}
           </button>
           <button 
             @click="page++" 
             :disabled="page * limit >= totalLogs || loading"
             class="px-4 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-bold disabled:opacity-50 transition-all hover:bg-slate-50 dark:hover:bg-slate-700"
           >
-            Вперед
+            {{ t('logs.pagination.next') }}
           </button>
         </div>
       </div>

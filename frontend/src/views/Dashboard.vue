@@ -1,6 +1,9 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '@/api/axios'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const stats = ref({
   domains_count: 0,
@@ -23,18 +26,18 @@ const formatBytes = (bytes) => {
 
 const translateAction = (action) => {
   const dictionary = {
-    'create_domain': 'Создание домена',
-    'update_domain': 'Изменение домена',
-    'delete_domain': 'Удаление домена',
-    'create_mailbox': 'Создание ящика',
-    'update_mailbox': 'Изменение ящика',
-    'delete_mailbox': 'Удаление ящика',
-    'create_alias': 'Создание алиаса',
-    'update_alias': 'Изменение алиаса',
-    'delete_alias': 'Удаление алиаса',
-    'create_admin': 'Новый администратор',
-    'delete_admin': 'Удаление администратора',
-    'login': 'Вход в систему'
+    'create_domain': t('actions.create_domain'),
+    'update_domain': t('actions.update_domain'),
+    'delete_domain': t('actions.delete_domain'),
+    'create_mailbox': t('actions.create_mailbox'),
+    'update_mailbox': t('actions.update_mailbox'),
+    'delete_mailbox': t('actions.delete_mailbox'),
+    'create_alias': t('actions.create_alias'),
+    'update_alias': t('actions.update_alias'),
+    'delete_alias': t('actions.delete_alias'),
+    'create_admin': t('actions.create_admin'),
+    'delete_admin': t('actions.delete_admin'),
+    'login': t('actions.login')
   }
   return dictionary[action.toLowerCase()] || action
 }
@@ -60,8 +63,8 @@ onMounted(fetchStats)
 <template>
   <div class="space-y-8 animate-in fade-in duration-500">
     <header class="flex flex-col gap-2">
-      <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Дашборд</h1>
-      <p class="text-slate-500 dark:text-slate-400">Обзор состояния почтовой системы и активности</p>
+      <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ t('dashboard.title') }}</h1>
+      <p class="text-slate-500 dark:text-slate-400">{{ t('dashboard.subtitle') }}</p>
     </header>
 
     <!-- Основные показатели -->
@@ -70,7 +73,7 @@ onMounted(fetchStats)
       <div class="glass-panel p-6 group hover:border-mail-blue-500/50 transition-colors">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Всего доменов</p>
+            <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{{ t('dashboard.stats.total_domains') }}</p>
             <p class="text-3xl font-bold mt-2 text-slate-900 dark:text-white">{{ stats.domains_count || 0 }}</p>
           </div>
           <div class="w-12 h-12 rounded-2xl bg-mail-blue-500/10 flex items-center justify-center text-mail-blue-500 group-hover:scale-110 transition-transform">
@@ -85,7 +88,7 @@ onMounted(fetchStats)
       <div class="glass-panel p-6 group hover:border-emerald-500/50 transition-colors">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Ящиков</p>
+            <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{{ t('dashboard.stats.mailboxes') }}</p>
             <p class="text-3xl font-bold mt-2 text-slate-900 dark:text-white">{{ stats.mailboxes_count || 0 }}</p>
           </div>
           <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 group-hover:scale-110 transition-transform">
@@ -100,7 +103,7 @@ onMounted(fetchStats)
       <div class="glass-panel p-6 group hover:border-amber-500/50 transition-colors">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Алиасов</p>
+            <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{{ t('dashboard.stats.aliases') }}</p>
             <p class="text-3xl font-bold mt-2 text-slate-900 dark:text-white">{{ stats.aliases_count || 0 }}</p>
           </div>
           <div class="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform">
@@ -115,7 +118,7 @@ onMounted(fetchStats)
       <div class="glass-panel p-6 group hover:border-purple-500/50 transition-colors">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Использование диска</p>
+            <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{{ t('dashboard.stats.disk_usage') }}</p>
             <p class="text-3xl font-bold mt-2 text-slate-900 dark:text-white text-base">
               {{ formatBytes(stats.quota_used) }}
             </p>
@@ -128,8 +131,8 @@ onMounted(fetchStats)
         </div>
         <div class="mt-4">
           <div class="flex justify-between text-[10px] mb-1 font-bold text-slate-500 uppercase tracking-tighter">
-            <span>{{ stats.quota_limit > 0 ? Math.round((stats.quota_used / stats.quota_limit) * 100) : 0 }}% занято</span>
-            <span>из {{ stats.quota_limit > 0 ? formatBytes(stats.quota_limit) : '∞ (Неограничено)' }}</span>
+            <span>{{ stats.quota_limit > 0 ? Math.round((stats.quota_used / stats.quota_limit) * 100) : 0 }}% {{ t('dashboard.stats.used_of') }}</span>
+            <span>{{ stats.quota_limit > 0 ? formatBytes(stats.quota_limit) : t('common.unlimited') }}</span>
           </div>
           <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
             <div 
@@ -145,9 +148,9 @@ onMounted(fetchStats)
     <div class="grid grid-cols-1 gap-8">
       <div class="glass-panel p-0 overflow-hidden flex flex-col min-h-[400px]">
         <div class="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/20">
-          <h2 class="font-bold text-lg">Последние действия в системе</h2>
+          <h2 class="font-bold text-lg">{{ t('dashboard.recent_actions.title') }}</h2>
           <router-link to="/logs" class="text-xs font-bold text-mail-blue-500 hover:bg-mail-blue-500/10 px-4 py-2 rounded-xl transition-colors">
-            Смотреть все логи
+            {{ t('dashboard.recent_actions.view_all') }}
           </router-link>
         </div>
         <div class="flex-1 overflow-y-auto">
@@ -156,7 +159,7 @@ onMounted(fetchStats)
               <svg class="mx-auto h-12 w-12 text-slate-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <p class="mt-4">Активности пока не зафиксировано</p>
+              <p class="mt-4">{{ t('dashboard.recent_actions.no_activity') }}</p>
             </div>
           </div>
           <div v-else class="divide-y divide-slate-50 dark:divide-slate-800">
@@ -184,7 +187,7 @@ onMounted(fetchStats)
                   <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed capitalize">
                     {{ translateAction(log.action) }}: <span class="text-slate-500 font-bold decoration-dotted">{{ log.data }}</span>
                   </p>
-                  <p class="text-[10px] text-slate-400 mt-1 font-bold lowercase">ОБЪЕКТ: {{ log.domain }}</p>
+                  <p class="text-[10px] text-slate-400 mt-1 font-bold lowercase">{{ t('dashboard.recent_actions.object') }}: {{ log.domain }}</p>
                 </div>
               </div>
             </div>

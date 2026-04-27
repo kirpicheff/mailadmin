@@ -3,11 +3,11 @@
     <!-- Header -->
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div>
-        <h1 class="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">Почтовые домены</h1>
-        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Управление ресурсами, лимитами и маршрутизацией</p>
+        <h1 class="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">{{ t('domains.title') }}</h1>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">{{ t('domains.subtitle') }}</p>
       </div>
       <button @click="openCreateModal" class="px-5 py-2.5 bg-mail-blue-600 text-white rounded-xl font-bold hover:bg-mail-blue-700 shadow-lg shadow-mail-blue-500/20 transition-all active:scale-95 text-sm">
-        Добавить домен
+        {{ t('domains.add') }}
       </button>
     </div>
 
@@ -17,14 +17,14 @@
         <table class="w-full text-left border-collapse">
           <thead>
             <tr class="bg-slate-50/50 dark:bg-slate-800/30 border-b border-slate-200 dark:border-slate-700/50">
-              <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Домен</th>
-              <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap text-center">Алиасы</th>
-              <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap text-center">Ящики</th>
-              <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap text-center">Квота</th>
-              <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap text-center">Резерв MX</th>
-              <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Изменение</th>
-              <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center whitespace-nowrap">Активен</th>
-              <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Действия</th>
+              <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">{{ t('domains.table.domain') }}</th>
+              <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap text-center">{{ t('domains.table.aliases') }}</th>
+              <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap text-center">{{ t('domains.table.mailboxes') }}</th>
+              <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap text-center">{{ t('domains.table.quota') }}</th>
+              <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap text-center">{{ t('domains.table.backup_mx') }}</th>
+              <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">{{ t('domains.table.modified') }}</th>
+              <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center whitespace-nowrap">{{ t('domains.table.active') }}</th>
+              <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">{{ t('common.actions') }}</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100 dark:divide-slate-800/50">
@@ -32,7 +32,7 @@
               <td class="px-6 py-4">
                 <div class="flex flex-col">
                   <span class="text-sm font-bold text-slate-800 dark:text-slate-200">{{ d.domain }}</span>
-                  <span class="text-[10px] text-slate-400 mt-0.5 font-medium uppercase tracking-tight">{{ d.description || 'Нет описания' }}</span>
+                  <span class="text-[10px] text-slate-400 mt-0.5 font-medium uppercase tracking-tight">{{ d.description || t('common.none') }}</span>
                 </div>
               </td>
               
@@ -56,21 +56,21 @@
 
               <td class="px-6 py-4 text-center">
                 <div class="flex flex-col items-center">
-                  <span class="text-[10px] text-slate-400 font-bold uppercase mb-0.5">Лимит: {{ d.quota === 0 ? '∞' : d.quota }}</span>
+                  <span class="text-[10px] text-slate-400 font-bold uppercase mb-0.5">{{ t('mailboxes.quota.limit') }}: {{ d.quota === 0 ? '∞' : d.quota }}</span>
                   <span class="text-xs font-bold text-slate-700 dark:text-slate-300">{{ d.quota_used }} МБ</span>
                 </div>
               </td>
 
               <td class="px-6 py-4 text-center">
                 <span :class="d.backupmx ? 'text-amber-500 font-bold' : 'text-slate-300'" class="text-[10px] uppercase font-black tracking-widest">
-                  {{ d.backupmx ? 'Да' : 'Нет' }}
+                  {{ d.backupmx ? t('common.yes') : t('common.no') }}
                 </span>
               </td>
 
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex flex-col">
                   <span class="text-[11px] font-bold text-slate-600 dark:text-slate-400">{{ formatDate(d.modified) }}</span>
-                  <span class="text-[9px] font-bold uppercase text-slate-400 mt-0.5">Пароль: {{ d.password_expiry === 0 ? '∞' : d.password_expiry + 'дн' }}</span>
+                  <span class="text-[9px] font-bold uppercase text-slate-400 mt-0.5">{{ t('common.password') }}: {{ d.password_expiry === 0 ? '∞' : d.password_expiry + t('common.days_short') }}</span>
                 </div>
               </td>
 
@@ -107,9 +107,9 @@
             </div>
             <div>
               <h3 class="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-                {{ isEdit ? 'Настройка домена' : 'Добавить домен' }}
+                {{ isEdit ? t('domains.modal.edit_title') : t('domains.modal.add_title') }}
               </h3>
-              <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{{ isEdit ? form.domain : 'Новое почтовое пространство' }}</p>
+              <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{{ isEdit ? form.domain : t('domains.modal.new_space') }}</p>
             </div>
           </div>
           <button @click="showModal = false" class="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-all bg-white dark:bg-slate-800 p-2 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 hover:scale-110 active:scale-95">
@@ -122,7 +122,7 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div class="md:col-span-2 space-y-4">
               <div class="relative">
-                <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 ml-1">Имя домена</label>
+                <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 ml-1">{{ t('domains.modal.domain_name') }}</label>
                 <div class="relative group">
                   <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-mail-blue-500 transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 002 2 2 2 0 012 2v.627m3.232-1.359A9 9 0 113.732 3.732" /></svg>
@@ -133,8 +133,8 @@
               </div>
 
               <div class="relative">
-                <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 ml-1">Описание</label>
-                <input v-model="form.description" type="text" placeholder="Например: Корпоративная почта"
+                <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 ml-1">{{ t('common.description') }}</label>
+                <input v-model="form.description" type="text" :placeholder="t('common.description')"
                   class="w-full px-5 py-3.5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 text-slate-900 dark:text-white focus:border-mail-blue-500 transition-all outline-none" />
               </div>
             </div>
@@ -143,18 +143,18 @@
             <div class="bg-slate-50/50 dark:bg-slate-800/20 p-6 rounded-[28px] border border-slate-100 dark:border-slate-800/50 space-y-5">
               <div class="flex items-center gap-2 text-slate-400">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
-                <h4 class="text-[10px] font-black uppercase tracking-widest text-slate-400">Лимиты ресурсов</h4>
+                <h4 class="text-[10px] font-black uppercase tracking-widest text-slate-400">{{ t('domains.modal.resource_limits') }}</h4>
               </div>
               <div class="space-y-4">
                 <div class="flex items-center justify-between">
-                  <span class="text-xs font-bold text-slate-600 dark:text-slate-400">Алиасы</span>
+                  <span class="text-xs font-bold text-slate-600 dark:text-slate-400">{{ t('domains.table.aliases') }}</span>
                   <input v-model.number="form.aliases" type="number" class="w-16 h-9 text-center rounded-xl bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 font-bold text-slate-900 dark:text-white text-xs shadow-sm focus:border-mail-blue-500 outline-none transition-all" />
                 </div>
                 <div class="flex items-center justify-between">
-                  <span class="text-xs font-bold text-slate-600 dark:text-slate-400">Ящики</span>
+                  <span class="text-xs font-bold text-slate-600 dark:text-slate-400">{{ t('domains.table.mailboxes') }}</span>
                   <input v-model.number="form.mailboxes" type="number" class="w-16 h-9 text-center rounded-xl bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 font-bold text-slate-900 dark:text-white text-xs shadow-sm focus:border-mail-blue-500 outline-none transition-all" />
                 </div>
-                <p class="text-[9px] text-center text-slate-400 font-bold uppercase tracking-tighter opacity-60">0 = ∞ | -1 = Выкл</p>
+                <p class="text-[9px] text-center text-slate-400 font-bold uppercase tracking-tighter opacity-60">0 = ∞ | -1 = {{ t('common.no') }}</p>
               </div>
             </div>
 
@@ -162,26 +162,26 @@
             <div class="bg-slate-50/50 dark:bg-slate-800/20 p-6 rounded-[28px] border border-slate-100 dark:border-slate-800/50 space-y-5">
               <div class="flex items-center gap-2 text-slate-400">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
-                <h4 class="text-[10px] font-black uppercase tracking-widest text-slate-400">Квоты (МБ)</h4>
+                <h4 class="text-[10px] font-black uppercase tracking-widest text-slate-400">{{ t('domains.modal.quotas_mb') }}</h4>
               </div>
               <div class="space-y-4">
                 <div class="flex items-center justify-between">
-                  <span class="text-xs font-bold text-slate-600 dark:text-slate-400">Общая</span>
+                  <span class="text-xs font-bold text-slate-600 dark:text-slate-400">{{ t('domains.modal.total_quota') }}</span>
                   <input v-model.number="form.quota" type="number" class="w-20 h-9 text-center rounded-xl bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 font-bold text-slate-900 dark:text-white text-xs shadow-sm focus:border-mail-blue-500 outline-none transition-all" />
                 </div>
                 <div class="flex items-center justify-between">
-                  <span class="text-xs font-bold text-slate-600 dark:text-slate-400">На ящик</span>
+                  <span class="text-xs font-bold text-slate-600 dark:text-slate-400">{{ t('domains.modal.per_mailbox') }}</span>
                   <input v-model.number="form.maxquota" type="number" class="w-20 h-9 text-center rounded-xl bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 font-bold text-slate-900 dark:text-white text-xs shadow-sm focus:border-mail-blue-500 outline-none transition-all" />
                 </div>
-                <p class="text-[9px] text-center text-slate-400 font-bold uppercase tracking-tighter opacity-60">0 = Без ограничений</p>
+                <p class="text-[9px] text-center text-slate-400 font-bold uppercase tracking-tighter opacity-60">0 = {{ t('mailboxes.filters.all') }}</p>
               </div>
             </div>
 
             <!-- Доп. настройки -->
             <div class="md:col-span-2 flex items-center justify-between bg-slate-50/30 dark:bg-slate-800/10 p-4 rounded-2xl border border-slate-100 dark:border-slate-800/50">
               <div class="flex flex-col gap-1 text-left">
-                <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Срок действия пароля (дней)</label>
-                <p class="text-[9px] text-slate-400 ml-1">Автоматическое истечение доступа к ящикам</p>
+                <label class="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">{{ t('domains.modal.password_expiry') }}</label>
+                <p class="text-[9px] text-slate-400 ml-1">{{ t('domains.modal.password_expiry_hint') }}</p>
               </div>
               <input v-model.number="form.password_expiry" type="number" class="w-24 h-10 px-4 rounded-xl border-2 border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 font-bold outline-none focus:border-mail-blue-500 text-center" />
             </div>
@@ -189,14 +189,14 @@
             <!-- Тумблеры -->
             <div class="md:col-span-2 flex gap-4 pt-4 border-t border-slate-100 dark:border-slate-800/50 mt-2">
               <button type="button" @click="form.backupmx = !form.backupmx" :class="form.backupmx ? 'border-amber-500 bg-amber-500/5' : 'border-slate-200 dark:border-slate-800'" class="flex-1 flex flex-col items-center gap-2 p-4 rounded-[24px] border-2 transition-all">
-                <span class="text-[10px] font-black uppercase tracking-widest" :class="form.backupmx ? 'text-amber-600' : 'text-slate-400'">Backup MX</span>
+                <span class="text-[10px] font-black uppercase tracking-widest" :class="form.backupmx ? 'text-amber-600' : 'text-slate-400'">{{ t('domains.modal.backup_mx') }}</span>
                 <div :class="form.backupmx ? 'bg-amber-500' : 'bg-slate-300 dark:bg-slate-700'" class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors">
                   <span :class="form.backupmx ? 'translate-x-5' : 'translate-x-1'" class="inline-block h-3 w-3 transform rounded-full bg-white transition-transform" />
                 </div>
               </button>
 
               <button type="button" @click="form.active = !form.active" :class="form.active ? 'border-green-500 bg-green-500/5' : 'border-slate-200 dark:border-slate-800'" class="flex-1 flex flex-col items-center gap-2 p-4 rounded-[24px] border-2 transition-all">
-                <span class="text-[10px] font-black uppercase tracking-widest" :class="form.active ? 'text-green-600' : 'text-slate-400'">Домен активен</span>
+                <span class="text-[10px] font-black uppercase tracking-widest" :class="form.active ? 'text-green-600' : 'text-slate-400'">{{ t('domains.modal.domain_active') }}</span>
                 <div :class="form.active ? 'bg-green-500' : 'bg-slate-300 dark:bg-slate-700'" class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors">
                   <span :class="form.active ? 'translate-x-5' : 'translate-x-1'" class="inline-block h-3 w-3 transform rounded-full bg-white transition-transform" />
                 </div>
@@ -207,10 +207,10 @@
           <!-- Кнопки -->
           <div class="flex gap-4 pt-4">
             <button type="submit" class="flex-1 py-4.5 bg-mail-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-mail-blue-700 shadow-xl shadow-mail-blue-500/30 transition-all hover:-translate-y-0.5 active:translate-y-0">
-              {{ isEdit ? 'Сохранить изменения' : 'Создать домен' }}
+              {{ isEdit ? t('domains.modal.save_changes') : t('domains.modal.add_title') }}
             </button>
             <button type="button" @click="showModal = false" class="px-8 py-4.5 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
-              Отмена
+              {{ t('common.cancel') }}
             </button>
           </div>
         </form>
@@ -222,6 +222,9 @@
 <script setup>
 import { ref, onMounted, reactive } from 'vue'
 import api from '@/api/axios'
+import { useI18n } from 'vue-i18n'
+
+const { t, locale } = useI18n()
 
 const domains = ref([])
 const showModal = ref(false)
@@ -284,7 +287,9 @@ const saveDomain = async () => {
     showModal.value = false
     fetchDomains()
   } catch (err) {
-    alert('Ошибка: ' + (err.response?.data?.error || err.message))
+    showModal.value = false
+    fetchDomains()
+    alert(t('common.error') + ': ' + (err.response?.data?.error || err.message))
   }
 }
 
@@ -297,23 +302,23 @@ const toggleDomainStatus = async (domain) => {
     })
     domain.active = newStatus
   } catch (err) {
-    alert('Ошибка при смене статуса')
+    alert(t('domains.errors.status_change'))
   }
 }
 
 const deleteDomain = async (name) => {
-  if (!confirm(`Удалить домен ${name} и ВСЕ ящики / алиасы этого домена?\nВНИМАНИЕ: Это действие необратимо!`)) return
+  if (!confirm(t('domains.delete_confirm', { name: name }))) return
   try {
     await api.delete(`/domains/${name}`)
     fetchDomains()
   } catch (err) {
-    alert('Ошибка при удалении домена')
+    alert(t('domains.errors.delete'))
   }
 }
 
 const formatDate = (dateStr) => {
   if (!dateStr || dateStr.startsWith('0001') || dateStr.startsWith('2000-01-01')) return '—'
-  return new Date(dateStr).toLocaleDateString('ru-RU', { 
+  return new Date(dateStr).toLocaleDateString(locale.value === 'ru' ? 'ru-RU' : 'en-US', { 
     day: '2-digit', 
     month: '2-digit', 
     year: 'numeric',

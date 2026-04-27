@@ -1,0 +1,266 @@
+{
+  "menu": {
+    "dashboard": "Дашборд",
+    "domains": "Домены",
+    "mailboxes": "Почтовые ящики",
+    "logs": "Журнал аудита",
+    "settings": "Настройки доступа"
+  },
+  "common": {
+    "logout": "Выйти",
+    "theme": {
+      "light": "Светлая тема",
+      "dark": "Темная тема"
+    },
+    "language": {
+      "ru": "Русский",
+      "en": "English"
+    },
+    "superadmin": "Суперадмин",
+    "domain_admin": "Админ домена",
+    "unlimited": "Неограничено",
+    "active": "Активен",
+    "inactive": "Неактивен",
+    "yes": "Да",
+    "no": "Нет",
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "edit": "Изменить",
+    "delete": "Удалить",
+    "create": "Создать",
+    "actions": "Действия",
+    "status": "Статус",
+    "search": "Поиск",
+    "loading": "Загрузка...",
+    "error": "Ошибка",
+    "success": "Успешно",
+    "none": "Нет",
+    "description": "Описание",
+    "name": "Имя",
+    "password": "Пароль",
+    "days_short": "дн"
+  },
+  "dashboard": {
+    "title": "Дашборд",
+    "subtitle": "Обзор состояния почтовой системы и активности",
+    "stats": {
+      "total_domains": "Всего доменов",
+      "mailboxes": "Ящиков",
+      "aliases": "Алиасов",
+      "disk_usage": "Использование диска",
+      "used_of": "занято из"
+    },
+    "recent_actions": {
+      "title": "Последние действия в системе",
+      "view_all": "Смотреть все логи",
+      "no_activity": "Активности пока не зафиксировано",
+      "object": "ОБЪЕКТ"
+    }
+  },
+  "domains": {
+    "title": "Почтовые домены",
+    "subtitle": "Управление ресурсами, лимитами и маршрутизацией",
+    "add": "Добавить домен",
+    "table": {
+      "domain": "Домен",
+      "aliases": "Алиасы",
+      "mailboxes": "Ящики",
+      "quota": "Квота",
+      "backup_mx": "Резерв MX",
+      "modified": "Изменение",
+      "active": "Активен"
+    },
+    "modal": {
+      "edit_title": "Настройка домена",
+      "add_title": "Добавить домен",
+      "new_space": "Новое почтовое пространство",
+      "domain_name": "Имя домена",
+      "resource_limits": "Лимиты ресурсов",
+      "quotas_mb": "Квоты (МБ)",
+      "total_quota": "Общая",
+      "per_mailbox": "На ящик",
+      "password_expiry": "Срок действия пароля (дней)",
+      "password_expiry_hint": "Автоматическое истечение доступа к ящикам",
+      "backup_mx": "Backup MX",
+      "domain_active": "Домен активен",
+      "save_changes": "Сохранить изменения"
+    },
+    "delete_confirm": "Удалить домен {name} и ВСЕ ящики / алиасы этого домена?\nВНИМАНИЕ: Это действие необратимо!",
+    "errors": {
+      "status_change": "Ошибка при смене статуса",
+      "delete": "Ошибка при удалении домена"
+    }
+  },
+  "mailboxes": {
+    "title": "Почтовые ящики и алиасы",
+    "select_domain": "Выбор домена",
+    "select_prompt": "Выберите домен...",
+    "search_placeholder": "Поиск по адресу или имени...",
+    "overview_for": "Обзор для",
+    "filters": {
+      "show": "Показать:",
+      "all": "Все",
+      "boxes": "Ящики",
+      "aliases": "Алиасы",
+      "domain_aliases": "Алиасы доменов"
+    },
+    "actions": {
+      "create_box": "Создать ящик",
+      "create_alias": "Создать алиас",
+      "download_csv": "Скачать CSV"
+    },
+    "table": {
+      "address_type": "Адрес / Тип",
+      "target_info": "Куда / Инфо",
+      "status": "Статус",
+      "modified": "Изменен",
+      "results_search": "Результаты поиска по всем доменам",
+      "results_domain": "Ресурсы домена",
+      "found": "Найдено"
+    },
+    "types": {
+      "mailbox": "Почтовый ящик",
+      "alias": "Алиас",
+      "domain_alias": "Алиас домена"
+    },
+    "quota": {
+       "limit": "Лимит",
+       "used": "занято"
+    },
+    "load_more": "Показать еще",
+    "empty": {
+      "search": "По вашему запросу ничего не найдено",
+      "section": "В этом разделе пока пусто"
+    },
+    "delete_confirm": "Удалить {address}?",
+    "errors": {
+      "status_change": "Ошибка при смене статуса",
+      "delete": "Ошибка при удалении"
+    }
+  },
+  "mailbox_form": {
+    "title_edit": "Настройка ящика",
+    "title_add": "Новый ящик",
+    "subtitle_add": "Основная учетная запись",
+    "address_label": "Адрес почты",
+    "address_placeholder": "например: postmaster",
+    "name_label": "Имя владельца",
+    "name_placeholder": "Иван Иванов",
+    "password_label": "Пароль",
+    "password_placeholder_edit": "Оставьте пустым для сохранения",
+    "password_placeholder_add": "Минимум 8 символов",
+    "password_generate": "Сгенерировать безопасный пароль",
+    "quota_label": "Квота (МБ)",
+    "quota_hint": "0 = Согласно настройкам домена",
+    "status_label": "Доступ разрешен",
+    "status_hint": "Включить/выключить аккаунт"
+  },
+  "alias_form": {
+    "title_edit": "Настройка алиаса",
+    "title_add": "Новый алиас",
+    "title_add_domain": "Новый алиас домена",
+    "subtitle_add": "Перенаправление почты",
+    "mode_regular": "Обычный",
+    "mode_domain": "Доменный",
+    "source_label": "Псевдоним (Источник)",
+    "source_domain_label": "Домен-источник (Алиас)",
+    "target_domain_label": "Целевой домен (Куда слать почту)",
+    "domain_hint": "Вся почта, поступающая на {alias}, будет перенаправлена на {target}",
+    "goto_label": "Куда пересылать (один или несколько адресов)",
+    "goto_placeholder": "user1{'@'}example.com\nuser2{'@'}other.com",
+    "goto_hint": "Можно вставить список через запятую или с новой строки",
+    "status_label": "Активен",
+    "status_hint": "Включить/выключить пересылку",
+    "errors": {
+       "domain_edit_not_supported": "Редактирование имени доменного алиаса пока не поддерживается. Удалите и создайте новый."
+    }
+  },
+  "logs": {
+    "title": "Журнал аудита",
+    "subtitle": "История всех действий администраторов в системе",
+    "table": {
+      "datetime": "Дата и время",
+      "admin": "Администратор",
+      "domain": "Домен",
+      "action": "Действие",
+      "data": "Объект / Данные"
+    },
+    "no_entries": "Нет записей в журнале",
+    "pagination": {
+      "shown": "Показано",
+      "of": "из",
+      "entries": "записей",
+      "prev": "Назад",
+      "next": "Вперед"
+    }
+  },
+  "admins": {
+    "title": "Настройки доступа",
+    "add": "Добавить администратора",
+    "table": {
+      "user": "Пользователь",
+      "rights": "Права",
+      "active": "Активен",
+      "contacts": "Почта / Телефон"
+    },
+    "no_extra_email": "Нет доп. почты",
+    "not_specified": "Не указан",
+    "modal": {
+      "edit_title": "Редактирование",
+      "add_title": "Новый администратор",
+      "username_label": "Username (Email)",
+      "password_label": "Пароль",
+      "superadmin_label": "Суперадмин",
+      "status_active": "Статус: Активен",
+      "extra_email": "Доп. Email",
+      "phone": "Телефон",
+      "domain_access": "Доступ к доменам"
+    },
+    "delete_confirm": "Удалить администратора {username}?",
+    "errors": {
+      "save": "Ошибка при сохранении",
+      "delete": "Ошибка при удалении",
+      "status_change": "Ошибка при смене статуса"
+    }
+  },
+  "change_password": {
+    "title": "Смена пароля",
+    "subtitle": "Ваш пароль истек. Пожалуйста, установите новый.",
+    "new_password": "Новый пароль",
+    "confirm_password": "Повторите пароль",
+    "button": "Сменить пароль",
+    "saving": "Сохранение...",
+    "errors": {
+      "mismatch": "Пароли не совпадают",
+      "short": "Пароль слишком короткий (мин. 6 символов)",
+      "general": "Ошибка при смене пароля"
+    },
+    "success": "Пароль успешно изменен! Пожалуйста, войдите снова."
+  },
+  "actions": {
+    "create_domain": "Создание домена",
+    "update_domain": "Изменение домена",
+    "delete_domain": "Удаление домена",
+    "create_mailbox": "Создание ящика",
+    "update_mailbox": "Изменение ящика",
+    "delete_mailbox": "Удаление ящика",
+    "create_alias": "Создание алиаса",
+    "update_alias": "Изменение алиаса",
+    "delete_alias": "Удаление алиаса",
+    "create_admin": "Новый администратор",
+    "delete_admin": "Удаление администратора",
+    "login": "Вход в систему"
+  },
+  "login": {
+    "title": "MailAdmin 2026",
+    "subtitle": "Войдите в панель управления",
+    "username": "Имя пользователя",
+    "password": "Пароль",
+    "button": "Войти",
+    "loading": "Вход...",
+    "errors": {
+      "invalid": "Неверное имя пользователя или пароль",
+      "server": "Ошибка сервера. Попробуйте позже."
+    }
+  }
+}

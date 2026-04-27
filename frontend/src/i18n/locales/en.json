@@ -1,0 +1,266 @@
+{
+  "menu": {
+    "dashboard": "Dashboard",
+    "domains": "Domains",
+    "mailboxes": "Mailboxes",
+    "logs": "Audit Log",
+    "settings": "Access Settings"
+  },
+  "common": {
+    "logout": "Logout",
+    "theme": {
+      "light": "Light Mode",
+      "dark": "Dark Mode"
+    },
+    "language": {
+      "ru": "Русский",
+      "en": "English"
+    },
+    "superadmin": "Superadmin",
+    "domain_admin": "Domain Admin",
+    "unlimited": "Unlimited",
+    "active": "Active",
+    "inactive": "Inactive",
+    "yes": "Yes",
+    "no": "No",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "delete": "Delete",
+    "create": "Create",
+    "actions": "Actions",
+    "status": "Status",
+    "search": "Search",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "none": "None",
+    "description": "Description",
+    "name": "Name",
+    "password": "Password",
+    "days_short": "d"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Overview of mail system status and activity",
+    "stats": {
+      "total_domains": "Total Domains",
+      "mailboxes": "Mailboxes",
+      "aliases": "Aliases",
+      "disk_usage": "Disk Usage",
+      "used_of": "used of"
+    },
+    "recent_actions": {
+      "title": "Recent System Actions",
+      "view_all": "View all logs",
+      "no_activity": "No activity recorded yet",
+      "object": "OBJECT"
+    }
+  },
+  "domains": {
+    "title": "Mail Domains",
+    "subtitle": "Manage resources, limits, and routing",
+    "add": "Add Domain",
+    "table": {
+      "domain": "Domain",
+      "aliases": "Aliases",
+      "mailboxes": "Mailboxes",
+      "quota": "Quota",
+      "backup_mx": "Backup MX",
+      "modified": "Last Modified",
+      "active": "Active"
+    },
+    "modal": {
+      "edit_title": "Domain Settings",
+      "add_title": "Add Domain",
+      "new_space": "New Mail Space",
+      "domain_name": "Domain Name",
+      "resource_limits": "Resource Limits",
+      "quotas_mb": "Quotas (MB)",
+      "total_quota": "Total",
+      "per_mailbox": "Per Mailbox",
+      "password_expiry": "Password Expiry (days)",
+      "password_expiry_hint": "Automatic access expiration for mailboxes",
+      "backup_mx": "Backup MX",
+      "domain_active": "Domain Active",
+      "save_changes": "Save Changes"
+    },
+    "delete_confirm": "Delete domain {name} and ALL mailboxes / aliases for this domain?\nWARNING: This action is irreversible!",
+    "errors": {
+      "status_change": "Error changing status",
+      "delete": "Error deleting domain"
+    }
+  },
+  "mailboxes": {
+    "title": "Mailboxes & Aliases",
+    "select_domain": "Select Domain",
+    "select_prompt": "Choose a domain...",
+    "search_placeholder": "Search by address or name...",
+    "overview_for": "Overview for",
+    "filters": {
+      "show": "Show:",
+      "all": "All",
+      "boxes": "Mailboxes",
+      "aliases": "Aliases",
+      "domain_aliases": "Domain Aliases"
+    },
+    "actions": {
+      "create_box": "Create Mailbox",
+      "create_alias": "Create Alias",
+      "download_csv": "Download CSV"
+    },
+    "table": {
+      "address_type": "Address / Type",
+      "target_info": "Target / Info",
+      "status": "Status",
+      "modified": "Modified",
+      "results_search": "Search Results (All Domains)",
+      "results_domain": "Domain Resources",
+      "found": "Found"
+    },
+    "types": {
+      "mailbox": "Mailbox",
+      "alias": "Alias",
+      "domain_alias": "Domain Alias"
+    },
+    "quota": {
+       "limit": "Limit",
+       "used": "used"
+    },
+    "load_more": "Load More",
+    "empty": {
+      "search": "No results found for your query",
+      "section": "This section is empty"
+    },
+    "delete_confirm": "Delete {address}?",
+    "errors": {
+      "status_change": "Error changing status",
+      "delete": "Error deleting"
+    }
+  },
+  "mailbox_form": {
+    "title_edit": "Mailbox Settings",
+    "title_add": "New Mailbox",
+    "subtitle_add": "Primary account",
+    "address_label": "Email Address",
+    "address_placeholder": "e.g., postmaster",
+    "name_label": "Owner Name",
+    "name_placeholder": "John Doe",
+    "password_label": "Password",
+    "password_placeholder_edit": "Leave empty to keep current",
+    "password_placeholder_add": "Minimum 8 characters",
+    "password_generate": "Generate secure password",
+    "quota_label": "Quota (MB)",
+    "quota_hint": "0 = Use domain settings",
+    "status_label": "Access Allowed",
+    "status_hint": "Enable/disable account"
+  },
+  "alias_form": {
+    "title_edit": "Alias Settings",
+    "title_add": "New Alias",
+    "title_add_domain": "New Domain Alias",
+    "subtitle_add": "Email forwarding",
+    "mode_regular": "Regular",
+    "mode_domain": "Domain",
+    "source_label": "Alias (Source)",
+    "source_domain_label": "Source Domain (Alias)",
+    "target_domain_label": "Target Domain (Destination)",
+    "domain_hint": "All mail arriving at {alias} will be forwarded to {target}",
+    "goto_label": "Forward to (one or more addresses)",
+    "goto_placeholder": "user1{'@'}example.com\nuser2{'@'}other.com",
+    "goto_hint": "You can paste a comma-separated list or one address per line",
+    "status_label": "Active",
+    "status_hint": "Enable/disable forwarding",
+    "errors": {
+       "domain_edit_not_supported": "Editing domain alias name is not yet supported. Delete and create a new one."
+    }
+  },
+  "logs": {
+    "title": "Audit Log",
+    "subtitle": "History of all administrative actions in the system",
+    "table": {
+      "datetime": "Date & Time",
+      "admin": "Administrator",
+      "domain": "Domain",
+      "action": "Action",
+      "data": "Object / Data"
+    },
+    "no_entries": "No entries in log",
+    "pagination": {
+      "shown": "Showing",
+      "of": "of",
+      "entries": "entries",
+      "prev": "Prev",
+      "next": "Next"
+    }
+  },
+  "admins": {
+    "title": "Access Settings",
+    "add": "Add Administrator",
+    "table": {
+      "user": "User",
+      "rights": "Rights",
+      "active": "Active",
+      "contacts": "Email / Phone"
+    },
+    "no_extra_email": "No extra email",
+    "not_specified": "Not specified",
+    "modal": {
+      "edit_title": "Edit Admin",
+      "add_title": "New Administrator",
+      "username_label": "Username (Email)",
+      "password_label": "Password",
+      "superadmin_label": "Superadmin",
+      "status_active": "Status: Active",
+      "extra_email": "Extra Email",
+      "phone": "Phone",
+      "domain_access": "Domain Access"
+    },
+    "delete_confirm": "Delete administrator {username}?",
+    "errors": {
+      "save": "Error saving",
+      "delete": "Error deleting",
+      "status_change": "Error changing status"
+    }
+  },
+  "change_password": {
+    "title": "Change Password",
+    "subtitle": "Your password has expired. Please set a new one.",
+    "new_password": "New Password",
+    "confirm_password": "Confirm New Password",
+    "button": "Change Password",
+    "saving": "Saving...",
+    "errors": {
+      "mismatch": "Passwords do not match",
+      "short": "Password too short (min. 6 characters)",
+      "general": "Error changing password"
+    },
+    "success": "Password changed successfully! Please log in again."
+  },
+  "actions": {
+    "create_domain": "Create Domain",
+    "update_domain": "Update Domain",
+    "delete_domain": "Delete Domain",
+    "create_mailbox": "Create Mailbox",
+    "update_mailbox": "Update Mailbox",
+    "delete_mailbox": "Delete Mailbox",
+    "create_alias": "Create Alias",
+    "update_alias": "Update Alias",
+    "delete_alias": "Delete Alias",
+    "create_admin": "New Administrator",
+    "delete_admin": "Delete Administrator",
+    "login": "System Login"
+  },
+  "login": {
+    "title": "MailAdmin 2026",
+    "subtitle": "Log in to the control panel",
+    "username": "Username",
+    "password": "Password",
+    "button": "Login",
+    "loading": "Logging in...",
+    "errors": {
+      "invalid": "Invalid username or password",
+      "server": "Server error. Please try again later."
+    }
+  }
+}

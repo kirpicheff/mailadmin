@@ -9,7 +9,7 @@
       ]"
     >
       <span :class="modelValue ? 'text-slate-900 dark:text-white' : 'text-slate-400'">
-        {{ selectedLabel || placeholder }}
+        {{ selectedLabel || placeholder || t('mailboxes.select_prompt') }}
       </span>
       <svg 
         :class="['w-5 h-5 text-slate-400 transition-transform duration-300', isOpen ? 'rotate-180 text-mail-blue-500' : '']" 
@@ -49,6 +49,9 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps({
   modelValue: [String, Number],
@@ -58,7 +61,7 @@ const props = defineProps({
   },
   placeholder: {
     type: String,
-    default: 'Выберите...'
+    default: ''
   },
   disabled: Boolean
 })
