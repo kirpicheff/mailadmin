@@ -106,7 +106,20 @@
                 <td class="px-8 py-5">
                   <div v-if="item.type === 'mailbox'" class="space-y-1">
                     <div class="text-xs text-slate-700 dark:text-slate-300">{{ item.name || '—' }}</div>
-                    <div class="text-[10px] text-slate-400 font-medium">Квота: {{ item.quota_mb }} МБ</div>
+                    <div class="mt-2 space-y-1">
+                      <div class="flex justify-between text-[9px] font-bold text-slate-500 uppercase tracking-tighter">
+                        <span>{{ formatSize(item.quota_used) }} / {{ item.quota_mb > 0 ? item.quota_mb + ' МБ' : '∞' }}</span>
+                        <span v-if="item.quota_mb > 0">{{ Math.round((item.quota_used / (item.quota_mb * 1024 * 1024)) * 100) }}%</span>
+                        <span v-else>0%</span>
+                      </div>
+                      <div class="w-32 bg-slate-100 dark:bg-slate-800 rounded-full h-1 overflow-hidden">
+                        <div 
+                          class="h-full rounded-full transition-all duration-500" 
+                          :class="(item.quota_used / (item.quota_mb * 1024 * 1024)) > 0.9 ? 'bg-red-500' : 'bg-mail-blue-500'"
+                          :style="{ width: Math.min(100, (item.quota_mb > 0 ? (item.quota_used / (item.quota_mb * 1024 * 1024)) * 100 : 0)) + '%' }"
+                        ></div>
+                      </div>
+                    </div>
                   </div>
                   <div v-else class="flex flex-col gap-1">
                     <div v-for="addr in item.goto_list" :key="addr" class="text-xs text-slate-600 dark:text-slate-400 truncate max-w-xs">
@@ -397,6 +410,14 @@ const formatDate = (dateStr) => {
     month: '2-digit', 
     year: 'numeric'
   })
+}
+
+const formatSize = (bytes) => {
+  if (!bytes || bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
 }
 
 const downloadCSV = () => {

@@ -32,17 +32,22 @@ const router = createRouter({
       path: '/change-password',
       name: 'ChangePassword',
       component: () => import('../views/ChangePassword.vue')
+    },
+    {
+      path: '/logs',
+      name: 'Logs',
+      component: () => import('../views/Logs.vue')
     }
   ]
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to) => {
   const publicPages = ['/login']
   const authRequired = !publicPages.includes(to.path)
   const loggedIn = localStorage.getItem('accessToken')
 
   if (authRequired && !loggedIn) {
-    return next('/login')
+    return '/login'
   }
 
   if (loggedIn) {
@@ -50,16 +55,14 @@ router.beforeEach((to, from, next) => {
     try {
       const payload = JSON.parse(atob(loggedIn.split('.')[1]))
       if (payload.must_change_password && to.path !== '/change-password') {
-        return next('/change-password')
+        return '/change-password'
       }
     } catch (e) {}
   }
 
   if (to.path === '/login' && loggedIn) {
-    return next('/')
+    return '/'
   }
-
-  next()
 })
 
 export default router

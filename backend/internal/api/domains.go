@@ -3,11 +3,15 @@ package api
 import (
 	"net/http"
 	"github.com/labstack/echo/v4"
+	"github.com/user/mailadmin/internal/audit"
+	"github.com/user/mailadmin/internal/auth"
 	"github.com/user/mailadmin/internal/db"
 	"github.com/user/mailadmin/internal/models"
 )
 
-func RegisterDomainHandlers(g *echo.Group) {
+func RegisterDomainHandlers(g *echo.Group, secret string) {
+	g.Use(auth.JWTMiddleware(secret))
+
 	// Список доменов с реальной статистикой
 	g.GET("", func(c echo.Context) error {
 		var domains []models.Domain
@@ -53,10 +57,15 @@ func RegisterDomainHandlers(g *echo.Group) {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
 		}
 		
-		// Логика создания (PostfixAdmin ожидает некоторые поля по умолчанию)
+		claims := c.Get("user").(*auth.Claims)
+		
+		// Логика создания
 		if err := db.DB.Create(&domain).Error; err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to create domain: " + err.Error()})
 		}
+
+		audit.Log(db.DB, claims.Username, domain.Domain, "create domain", domain.Description)
+
 		return c.JSON(http.StatusCreated, domain)
 	})
 
@@ -72,18 +81,28 @@ func RegisterDomainHandlers(g *echo.Group) {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
 		}
 
+		claims := c.Get("user").(*auth.Claims)
+
 		if err := db.DB.Save(&domain).Error; err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to update domain"})
 		}
+
+		audit.Log(db.DB, claims.Username, domain.Domain, "update domain", domain.Description)
+
 		return c.JSON(http.StatusOK, domain)
 	})
 
 	// Удаление домена
 	g.DELETE("/:id", func(c echo.Context) error {
 		id := c.Param("id")
+		claims := c.Get("user").(*auth.Claims)
+
 		if err := db.DB.Where("domain = ?", id).Delete(&models.Domain{}).Error; err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to delete domain"})
 		}
+
+		audit.Log(db.DB, claims.Username, id, "delete domain", "")
+
 		return c.JSON(http.StatusNoContent, nil)
 	})
 }

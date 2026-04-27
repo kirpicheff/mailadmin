@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/user/mailadmin/internal/audit"
 	"github.com/user/mailadmin/internal/auth"
 	"github.com/user/mailadmin/internal/db"
 	"github.com/user/mailadmin/internal/models"
@@ -78,6 +79,10 @@ func RegisterAliasHandlers(g *echo.Group, secret string) {
 		if err := db.DB.Create(&alias).Error; err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to create alias"})
 		}
+
+		claims := c.Get("user").(*auth.Claims)
+		audit.Log(db.DB, claims.Username, alias.Domain, "create alias", alias.Address)
+
 		return c.JSON(http.StatusCreated, alias)
 	})
 
@@ -101,15 +106,26 @@ func RegisterAliasHandlers(g *echo.Group, secret string) {
 		}).Error; err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to update alias"})
 		}
+
+		claims := c.Get("user").(*auth.Claims)
+		audit.Log(db.DB, claims.Username, existing.Domain, "update alias", existing.Address)
+
 		return c.JSON(http.StatusOK, existing)
 	})
 
 	// Удаление алиаса
 	aliasGroup.DELETE("/:address", func(c echo.Context) error {
 		address := c.Param("address")
+		var existing models.Alias
+		db.DB.Select("domain").Where("address = ?", address).First(&existing)
+
 		if err := db.DB.Where("address = ?", address).Delete(&models.Alias{}).Error; err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to delete alias"})
 		}
+
+		claims := c.Get("user").(*auth.Claims)
+		audit.Log(db.DB, claims.Username, existing.Domain, "delete alias", address)
+
 		return c.NoContent(http.StatusNoContent)
 	})
 
@@ -154,14 +170,25 @@ func RegisterAliasHandlers(g *echo.Group, secret string) {
 		if err := db.DB.Create(&alias).Error; err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to create domain alias"})
 		}
+
+		claims := c.Get("user").(*auth.Claims)
+		audit.Log(db.DB, claims.Username, alias.TargetDomain, "create domain alias", alias.AliasDomain)
+
 		return c.JSON(http.StatusCreated, alias)
 	})
 
 	domainAliasGroup.DELETE("/:alias_domain", func(c echo.Context) error {
 		aliasDomain := c.Param("alias_domain")
+		var existing models.AliasDomain
+		db.DB.Select("target_domain").Where("alias_domain = ?", aliasDomain).First(&existing)
+
 		if err := db.DB.Where("alias_domain = ?", aliasDomain).Delete(&models.AliasDomain{}).Error; err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to delete domain alias"})
 		}
+
+		claims := c.Get("user").(*auth.Claims)
+		audit.Log(db.DB, claims.Username, existing.TargetDomain, "delete domain alias", aliasDomain)
+
 		return c.NoContent(http.StatusNoContent)
 	})
 }

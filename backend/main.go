@@ -47,13 +47,17 @@ func main() {
 
 	// Маршруты управления доменами
 	domainGroup := apiGroup.Group("/domains")
-	api.RegisterDomainHandlers(domainGroup)
+	api.RegisterDomainHandlers(domainGroup, cfg.JWTSecret)
 
 	// Маршруты управления ящиками
 	api.RegisterMailboxHandlers(apiGroup, cfg.JWTSecret)
 
 	// Маршруты управления алиасами
 	api.RegisterAliasHandlers(apiGroup, cfg.JWTSecret)
+
+	// Логи и статистика
+	api.RegisterLogHandlers(apiGroup, cfg.JWTSecret)
+	api.RegisterStatsHandlers(apiGroup, cfg.JWTSecret)
 
 	// Запуск сервера
 	e.Logger.Fatal(e.Start(cfg.ListenAddr))

@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/labstack/echo/v4"
+	"github.com/user/mailadmin/internal/audit"
 	"github.com/user/mailadmin/internal/auth"
 	"github.com/user/mailadmin/internal/db"
 	"github.com/user/mailadmin/internal/models"
@@ -76,6 +77,10 @@ func RegisterAdminHandlers(api *echo.Group, secret string) {
 					return err
 				}
 			}
+
+			claims := c.Get("user").(*auth.Claims)
+			audit.Log(tx, claims.Username, "system", "create admin", req.Admin.Username)
+
 			return nil
 		})
 
@@ -128,6 +133,10 @@ func RegisterAdminHandlers(api *echo.Group, secret string) {
 					return err
 				}
 			}
+
+			claims := c.Get("user").(*auth.Claims)
+			audit.Log(tx, claims.Username, "system", "update admin", username)
+
 			return nil
 		})
 
@@ -147,6 +156,10 @@ func RegisterAdminHandlers(api *echo.Group, secret string) {
 			if err := tx.Where("username = ?", username).Delete(&models.Admin{}).Error; err != nil {
 				return err
 			}
+
+			claims := c.Get("user").(*auth.Claims)
+			audit.Log(tx, claims.Username, "system", "delete admin", username)
+
 			return nil
 		})
 		if err != nil {

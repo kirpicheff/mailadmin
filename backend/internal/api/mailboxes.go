@@ -10,6 +10,7 @@ import (
 	"github.com/GehirnInc/crypt"
 	_ "github.com/GehirnInc/crypt/sha512_crypt"
 	"github.com/labstack/echo/v4"
+	"github.com/user/mailadmin/internal/audit"
 	"github.com/user/mailadmin/internal/auth"
 	"github.com/user/mailadmin/internal/db"
 	"github.com/user/mailadmin/internal/models"
@@ -57,9 +58,24 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 		var total int64
 		dbQuery.Count(&total)
 
-		var mailboxes []models.Mailbox
-		if err := dbQuery.Offset(offset).Limit(limit).Order("username ASC").Find(&mailboxes).Error; err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, "Failed to fetch mailboxes")
+		type MailboxWithQuota struct {
+			models.Mailbox
+			QuotaUsed int64 `json:"quota_used"`
+			Messages  int   `json:"messages"`
+		}
+
+		var mailboxes []MailboxWithQuota
+		
+		// Используем алиасы m и q для ясности
+		err := dbQuery.
+			Select("mailbox.*, COALESCE(quota2.bytes, 0) as quota_used, COALESCE(quota2.messages, 0) as messages").
+			Joins("LEFT JOIN quota2 ON quota2.username = mailbox.username").
+			Offset(offset).Limit(limit).
+			Order("mailbox.username ASC").
+			Scan(&mailboxes).Error
+
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "Failed to fetch mailboxes: "+err.Error())
 		}
 
 		c.Response().Header().Set("X-Total-Count", strconv.FormatInt(total, 10))
@@ -100,6 +116,10 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 		if err := db.DB.Create(&box).Error; err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to create mailbox: " + err.Error()})
 		}
+
+		claims := c.Get("user").(*auth.Claims)
+
+		audit.Log(db.DB, claims.Username, box.Domain, "create mailbox", box.Username)
 
 		return c.JSON(http.StatusCreated, box)
 	})
@@ -145,15 +165,26 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to update mailbox"})
 		}
 
+		claims := c.Get("user").(*auth.Claims)
+		audit.Log(db.DB, claims.Username, existing.Domain, "update mailbox", existing.Username)
+
 		return c.JSON(http.StatusOK, existing)
 	})
 
 	// Удаление ящика
 	mailboxes.DELETE("/:username", func(c echo.Context) error {
 		username := c.Param("username")
+		// Получаем домен для лога перед удалением
+		var box models.Mailbox
+		db.DB.Select("domain").Where("username = ?", username).First(&box)
+
 		if err := db.DB.Where("username = ?", username).Delete(&models.Mailbox{}).Error; err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to delete mailbox"})
 		}
+
+		claims := c.Get("user").(*auth.Claims)
+		audit.Log(db.DB, claims.Username, box.Domain, "delete mailbox", username)
+
 		return c.NoContent(http.StatusNoContent)
 	})
 }
