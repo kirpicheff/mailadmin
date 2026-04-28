@@ -147,27 +147,88 @@ func RegisterSystemHandlers(g *echo.Group, secret string) {
 	// Логи сервера
 	system.GET("/logs", func(c echo.Context) error {
 		lines, _ := strconv.Atoi(c.QueryParam("lines"))
-		if lines <= 0 || lines > 1000 {
+		if lines <= 0 || lines > 5000 {
 			lines = 200
 		}
+		search := c.QueryParam("search")
 
 		// Пытаемся найти лог почты
 		logPaths := []string{"/var/log/mail.log", "/var/log/maillog"}
 		var content string
+		var logFile string
 		for _, p := range logPaths {
 			if _, err := os.Stat(p); err == nil {
-				out := runCmd("tail", "-n", strconv.Itoa(lines), p)
-				content = out
+				logFile = p
 				break
 			}
 		}
 
-		// Если файлов нет, пробуем journalctl
-		if content == "" {
-			content = runCmd("journalctl", "-u", "postfix", "-n", strconv.Itoa(lines), "--no-pager")
+		if logFile != "" {
+			if search != "" {
+				// Используем grep для поиска (последние N совпадений)
+				// sh -c "grep -i 'pattern' file | tail -n lines"
+				shCmd := fmt.Sprintf("grep -i %s %s | tail -n %d", strconv.Quote(search), logFile, lines)
+				content = runCmd("sh", "-c", shCmd)
+			} else {
+				content = runCmd("tail", "-n", strconv.Itoa(lines), logFile)
+			}
+		}
+
+		// Если файлов нет или пусто (и нет поиска), пробуем journalctl
+		if content == "" && logFile == "" {
+			if search != "" {
+				shCmd := fmt.Sprintf("journalctl -u postfix --no-pager | grep -i %s | tail -n %d", strconv.Quote(search), lines)
+				content = runCmd("sh", "-c", shCmd)
+			} else {
+				content = runCmd("journalctl", "-u", "postfix", "-n", strconv.Itoa(lines), "--no-pager")
+			}
 		}
 
 		return c.JSON(http.StatusOK, map[string]string{"logs": content})
+	})
+
+	// Fail2Ban управление
+	system.GET("/fail2ban", func(c echo.Context) error {
+		out := runCmd("fail2ban-client", "status")
+		reJails := regexp.MustCompile(`Jail list:\s+(.+)`)
+		match := reJails.FindStringSubmatch(out)
+		if len(match) < 2 {
+			return c.JSON(http.StatusOK, []interface{}{})
+		}
+
+		jails := strings.Split(match[1], ",")
+		type BannedIP struct {
+			IP   string `json:"ip"`
+			Jail string `json:"jail"`
+		}
+		var result []BannedIP
+
+		for _, jail := range jails {
+			jail = strings.Trim(strings.TrimSpace(jail), ",")
+			if jail == "" {
+				continue
+			}
+			jOut := runCmd("fail2ban-client", "status", jail)
+			reIPs := regexp.MustCompile(`Banned IP list:\s+(.+)`)
+			iMatch := reIPs.FindStringSubmatch(jOut)
+			if len(iMatch) >= 2 {
+				ips := strings.Fields(iMatch[1])
+				for _, ip := range ips {
+					result = append(result, BannedIP{IP: ip, Jail: jail})
+				}
+			}
+		}
+		return c.JSON(http.StatusOK, result)
+	})
+
+	system.DELETE("/fail2ban/unban", func(c echo.Context) error {
+		ip := c.QueryParam("ip")
+		jail := c.QueryParam("jail")
+		if ip == "" || jail == "" {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "ip and jail required"})
+		}
+		runCmd("fail2ban-client", "set", jail, "unbanip", ip)
+		return c.NoContent(http.StatusNoContent)
 	})
 }
 
@@ -281,14 +342,25 @@ func getSystemStats() SystemStats {
 		}
 	}
 
-	// 8. Fail2Ban
-	f2bOut := runCmd("fail2ban-client", "status", "postfix")
-	if f2bOut != "" {
-		re := regexp.MustCompile(`Currently banned:\s+(\d+)`)
-		match := re.FindStringSubmatch(f2bOut)
-		if len(match) > 1 {
-			s.F2BCount, _ = strconv.Atoi(match[1])
+	// 8. Fail2Ban (Все тюрьмы)
+	f2bStatus := runCmd("fail2ban-client", "status")
+	reJails := regexp.MustCompile(`Jail list:\s+(.+)`)
+	mJails := reJails.FindStringSubmatch(f2bStatus)
+	if len(mJails) >= 2 {
+		jails := strings.Split(mJails[1], ",")
+		totalBanned := 0
+		for _, j := range jails {
+			j = strings.Trim(strings.TrimSpace(j), ",")
+			if j == "" { continue }
+			jOut := runCmd("fail2ban-client", "status", j)
+			reBanned := regexp.MustCompile(`Currently banned:\s+(\d+)`)
+			mBanned := reBanned.FindStringSubmatch(jOut)
+			if len(mBanned) >= 2 {
+				count, _ := strconv.Atoi(mBanned[1])
+				totalBanned += count
+			}
 		}
+		s.F2BCount = totalBanned
 	}
 
 	// 9. Supervisor Services

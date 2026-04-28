@@ -50,6 +50,7 @@ The system implements strict access control using role segregation. There are tw
 
 ### 3. Admin & Monitoring Tools
 - **System Health Dashboard:** Real-time monitoring of CPU, RAM, Disk, SSL certificate validity, and system service statuses.
+- **Fail2Ban Management:** View active bans across all jails (SSH, Postfix, Dovecot) and unban malicious IPs with a single click.
 - **Mail Queue Management:** View, search, and delete messages in the Postfix mail queue directly from the web interface.
 - Tool for sending verification (test) emails on behalf of an administrator.
 - Broadcast mailing tool to send notifications to all users in a domain or group of domains.
@@ -182,7 +183,8 @@ For production use, it is recommended to compile the frontend (`npm run build`) 
 - Управление алиасами (направление писем с одного адреса на группу адресов). Автосоздание Postmaster-алиасов при добавлении новых доменов.
 
 ### 3. Инструменты и Мониторинг
-- **Дашборд здоровья системы:** Мониторинг RAM, Диска, статуса SSL-сертификатов, активности Fail2Ban и сессий IMAP в реальном времени.
+- **Дашборд здоровья системы:** Мониторинг RAM, Диска, статуса SSL-сертификатов и сессий IMAP в реальном времени.
+- **Управление Fail2Ban:** Мониторинг активных блокировок по всем тюрьмам (SSH, Postfix, Dovecot) и мгновенный разбан (Unban) вредоносных IP в один клик.
 - **Управление почтовой очередью:** Просмотр, поиск и удаление сообщений в очереди Postfix прямо из панели управления.
 - Инструмент отправки поверочных (тестовых) писем от имени администратора.
 - Инструмент широковещательной рассылки (Broadcast) оповещений всем пользователям в домене или группе доменов.

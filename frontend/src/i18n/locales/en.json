@@ -476,5 +476,25 @@
       "delete_error": "Error deleting message",
       "clear_error": "Error clearing queue"
     }
+  },
+  "fail2ban": {
+    "title": "Fail2Ban Management",
+    "banned_ips": "Banned IPs",
+    "jail": "Jail",
+    "ip_address": "IP Address",
+    "unban": "Unban",
+    "confirm_unban": "Unban IP {ip} in jail {jail}?",
+    "empty": "No banned IPs found",
+    "messages": {
+      "unban_success": "IP successfully unbanned",
+      "unban_error": "Failed to unban IP"
+    }
+  },
+  "server_logs": {
+    "placeholder": "Search by email, ID, or error pattern...",
+    "empty": "No log entries found for this criteria",
+    "initializing": "Initializing Terminal...",
+    "rows": "{count} rows",
+    "subtitle": "Mail System Logs"
   }
 }

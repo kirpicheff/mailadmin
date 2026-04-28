@@ -16,6 +16,9 @@ const stats = ref({
 
 const health = ref(null)
 const loading = ref(true)
+const bannedIPs = ref([])
+const showF2BModal = ref(false)
+const processingUnban = ref(null)
 let timer = null
 
 const formatBytes = (bytes) => {
@@ -53,6 +56,30 @@ const fetchHealth = async () => {
     console.log('Metrics unavailable (remote)')
   } finally {
     loading.value = false
+  }
+}
+
+const fetchBannedIPs = async () => {
+  try {
+    const response = await api.get('/system/fail2ban')
+    bannedIPs.value = response.data
+    showF2BModal.value = true
+  } catch (error) {
+    console.error('Failed to fetch banned IPs:', error)
+  }
+}
+
+const unbanIP = async (ip, jail) => {
+  if (!confirm(t('fail2ban.confirm_unban', { ip, jail }))) return
+  processingUnban.value = ip
+  try {
+    await api.delete('/system/fail2ban/unban', { params: { ip, jail } })
+    await fetchBannedIPs() // Рефреш списка
+    await fetchHealth()    // Рефреш счетчика на дашборде
+  } catch (error) {
+    alert(t('fail2ban.messages.unban_error'))
+  } finally {
+    processingUnban.value = null
   }
 }
 
@@ -153,9 +180,10 @@ onUnmounted(() => {
         </div>
 
         <!-- FAIL2BAN / QUEUE -->
-        <div class="health-card">
+        <div class="health-card cursor-pointer hover:border-amber-500/50 group/f2b" @click="fetchBannedIPs">
           <div class="flex justify-between mb-2">
-            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Security / Queue</span>
+            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest group-hover/f2b:text-amber-500 transition-colors">Security / Queue</span>
+            <svg class="w-3 h-3 text-slate-300 group-hover/f2b:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7" /></svg>
           </div>
           <div class="flex items-center gap-4">
              <div class="flex flex-col">
@@ -276,6 +304,67 @@ onUnmounted(() => {
               </p>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fail2Ban Modal -->
+    <div v-if="showF2BModal" class="fixed inset-0 z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
+      <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" @click="showF2BModal = false"></div>
+      
+      <div class="glass-panel w-full max-w-2xl overflow-hidden relative animate-in zoom-in-95 duration-300">
+        <div class="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/10">
+          <div>
+            <h2 class="text-2xl font-black text-slate-900 dark:text-white leading-none">{{ t('fail2ban.title') }}</h2>
+            <p class="text-xs text-slate-500 font-bold uppercase tracking-widest mt-2">{{ t('fail2ban.banned_ips') }}</p>
+          </div>
+          <button @click="showF2BModal = false" class="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-xl transition-colors">
+            <svg class="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+
+        <div class="p-0 max-h-[60vh] overflow-y-auto">
+          <table v-if="bannedIPs.length > 0" class="w-full text-left">
+            <thead class="sticky top-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md z-10 border-b border-slate-100 dark:border-slate-800">
+              <tr>
+                <th class="px-8 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">{{ t('fail2ban.ip_address') }}</th>
+                <th class="px-8 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">{{ t('fail2ban.jail') }}</th>
+                <th class="px-8 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">{{ t('common.actions') }}</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+              <tr v-for="item in bannedIPs" :key="item.ip + item.jail" class="group transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                <td class="px-8 py-5 text-sm font-black text-slate-900 dark:text-white tracking-tight">{{ item.ip }}</td>
+                <td class="px-8 py-5">
+                  <span class="px-2 py-1 bg-amber-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-black uppercase rounded-lg border border-amber-200 dark:border-amber-500/20">
+                    {{ item.jail }}
+                  </span>
+                </td>
+                <td class="px-8 py-5 text-right">
+                  <button 
+                    @click="unbanIP(item.ip, item.jail)" 
+                    :disabled="processingUnban === item.ip"
+                    class="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-red-500/20 disabled:opacity-50"
+                  >
+                    {{ processingUnban === item.ip ? '...' : t('fail2ban.unban') }}
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div v-else class="py-24 text-center">
+            <div class="w-20 h-20 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-500 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-emerald-500/10 rotate-3 group-hover:rotate-0 transition-transform">
+              <svg class="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04M12 21.056c1.54 0 3.024-.317 4.382-.886L12.038 12 7.634 20.17A11.947 11.947 0 0112 21.056z" /></svg>
+            </div>
+            <p class="text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase">{{ t('fail2ban.empty') }}</p>
+            <p class="text-sm text-slate-500 font-medium mt-2">Сервер в безопасности, активных угроз не обнаружено</p>
+          </div>
+        </div>
+
+        <div class="p-8 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/10 flex justify-end">
+          <button @click="showF2BModal = false" class="px-8 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-slate-900 dark:text-white shadow-sm">
+            {{ t('common.close') }}
+          </button>
         </div>
       </div>
     </div>
