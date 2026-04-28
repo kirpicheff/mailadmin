@@ -27,6 +27,7 @@
     "no": "No",
     "save": "Save",
     "cancel": "Cancel",
+    "from": "from",
     "edit": "Edit",
     "delete": "Delete",
     "create": "Create",
@@ -110,11 +111,29 @@
     "actions": {
       "create_box": "Create Mailbox",
       "create_alias": "Create Alias",
+      "mass_create": "Mass Create",
       "download_csv": "Download CSV"
+    },
+    "batch": {
+      "selected": "Selected",
+      "items": "items",
+      "delete_confirm": "Delete selected items ({count} items)?"
+    },
+    "mass_modal": {
+      "title": "Mass Mailbox Creation",
+      "subtitle": "Quickly add multiple accounts to domain {domain}",
+      "prefixes_label": "List of names (prefixes)",
+      "prefixes_hint": "Enter names (e.g., ivan, petr) one per line or comma-separated",
+      "password_label": "Common Password",
+      "quota_label": "Quota for each (MB)",
+      "active_label": "Activate immediately",
+      "button": "Create all mailboxes",
+      "success": "Successfully created {count} mailboxes"
     },
     "table": {
       "address_type": "Address / Type",
-      "target_info": "Target / Info",
+      "recipient": "Recipient (Target)",
+      "usage": "Usage / Quota",
       "status": "Status",
       "modified": "Modified",
       "results_search": "Search Results (All Domains)",
@@ -264,9 +283,14 @@
     "create_alias": "Create Alias",
     "update_alias": "Update Alias",
     "delete_alias": "Delete Alias",
-    "create_admin": "New Administrator",
-    "delete_admin": "Delete Administrator",
-    "login": "System Login"
+    "create_admin": "Create administrator",
+    "delete_admin": "Delete administrator",
+    "login": "System login",
+    "batch_create_mailboxes": "Batch create mailboxes",
+    "batch_delete_mailboxes": "Batch delete mailboxes",
+    "batch_status_update": "Batch status update",
+    "create_domain_alias": "Create domain alias",
+    "delete_domain_alias": "Delete domain alias"
   },
   "login": {
     "title": "MailAdmin",

@@ -6,9 +6,27 @@
         <h1 class="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">{{ t('domains.title') }}</h1>
         <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">{{ t('domains.subtitle') }}</p>
       </div>
-      <button @click="openCreateModal" class="px-5 py-2.5 bg-mail-blue-600 text-white rounded-xl font-bold hover:bg-mail-blue-700 shadow-lg shadow-mail-blue-500/20 transition-all active:scale-95 text-sm">
-        {{ t('domains.add') }}
-      </button>
+      <div class="flex items-center gap-3">
+        <button @click="openCreateModal" class="px-5 py-2.5 bg-mail-blue-600 text-white rounded-xl font-bold hover:bg-mail-blue-700 shadow-lg shadow-mail-blue-500/20 transition-all active:scale-95 text-sm whitespace-nowrap">
+          {{ t('domains.add') }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="flex flex-col md:flex-row gap-4 items-center justify-between bg-white/50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 backdrop-blur-md">
+      <div class="relative w-full md:w-96 group">
+        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-mail-blue-500 transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+        </div>
+        <input v-model="filters.search" @input="fetchDomains" type="text" :placeholder="t('common.search')" class="w-full pl-11 pr-4 py-2.5 bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-xl focus:border-mail-blue-500 outline-none transition-all font-bold text-sm" />
+      </div>
+
+      <div class="flex items-center gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+        <button v-for="opt in ['all', 'true', 'false']" :key="opt" @click="filters.active = opt; fetchDomains()" :class="filters.active === opt ? 'bg-white dark:bg-slate-700 text-mail-blue-600 dark:text-mail-blue-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'" class="px-4 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all">
+          {{ opt === 'all' ? t('mailboxes.filters.all') : (opt === 'true' ? t('common.active') : t('common.inactive')) }}
+        </button>
+      </div>
     </div>
 
     <!-- Domains Table -->
@@ -277,9 +295,17 @@ const form = reactive({
   password_expiry: 3650
 })
 
+const filters = reactive({
+  search: '',
+  active: 'all'
+})
+
 const fetchDomains = async () => {
   try {
-    const { data } = await api.get('/domains')
+    const params = {}
+    if (filters.search) params.search = filters.search
+    if (filters.active !== 'all') params.active = filters.active
+    const { data } = await api.get('/domains', { params })
     domains.value = data
     // После загрузки доменов запускаем проверку MX
     checkAllMX()

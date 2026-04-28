@@ -46,6 +46,16 @@
           <span class="text-slate-200 dark:text-slate-800">::</span>
           <button @click="filterType = 'domain_aliases'" :class="filterType === 'domain_aliases' ? 'text-mail-blue-600' : 'text-slate-400 hover:text-slate-600 dark:hover:text-white'" class="transition-colors px-2">{{ t('mailboxes.filters.domain_aliases') }}</button>
         </div>
+
+        <!-- Status Filter -->
+        <div class="flex flex-wrap justify-center items-center gap-2 pt-2 text-xs font-black uppercase tracking-widest mt-2">
+            <span class="text-slate-400">{{ t('common.status') }}:</span>
+            <button @click="filterStatus = 'all'" :class="filterStatus === 'all' ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600 dark:hover:text-white'" class="transition-colors px-2">{{ t('mailboxes.filters.all') }}</button>
+            <span class="text-slate-200 dark:text-slate-800">|</span>
+            <button @click="filterStatus = 'true'" :class="filterStatus === 'true' ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600 dark:hover:text-white'" class="transition-colors px-2">{{ t('common.active') }}</button>
+            <span class="text-slate-200 dark:text-slate-800">|</span>
+            <button @click="filterStatus = 'false'" :class="filterStatus === 'false' ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600 dark:hover:text-white'" class="transition-colors px-2">{{ t('common.inactive') }}</button>
+        </div>
       </div>
     </div>
 
@@ -58,6 +68,10 @@
       <button @click="openAliasModal()" class="px-6 py-3 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-indigo-700 shadow-xl shadow-indigo-500/20 transition-all active:scale-95 flex items-center gap-2">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" /></svg>
         {{ t('mailboxes.actions.create_alias') }}
+      </button>
+      <button @click="showMassCreate = true" class="px-6 py-3 bg-slate-800 dark:bg-slate-700 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-900 transition-all active:scale-95 flex items-center gap-2 shadow-xl shadow-slate-900/10">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 14v6m-3-3h6M6 10h2a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v2a2 2 0 002 2zm10 0h2a2 2 0 002-2V6a2 2 0 00-2-2h-2a2 2 0 00-2 2v2a2 2 0 002 2zM6 20h2a2 2 0 002-2v-2a2 2 0 00-2-2H6a2 2 0 00-2 2v2a2 2 0 002 2z" /></svg>
+        {{ t('mailboxes.actions.mass_create') }}
       </button>
       <button @click="downloadCSV" class="px-6 py-3 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-all active:scale-95 flex items-center gap-2">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
@@ -79,8 +93,12 @@
         <table class="w-full text-left border-collapse">
           <thead>
             <tr class="bg-slate-50/50 dark:bg-slate-800/30 border-b border-slate-200 dark:border-slate-700/50">
+              <th class="px-6 py-5 text-center">
+                <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" class="w-4 h-4 rounded-md border-slate-300 dark:border-slate-700 text-mail-blue-600 focus:ring-mail-blue-500 cursor-pointer" />
+              </th>
               <th class="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('mailboxes.table.address_type') }}</th>
-              <th class="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('mailboxes.table.target_info') }}</th>
+              <th class="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('mailboxes.table.recipient') }}</th>
+              <th class="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('mailboxes.table.usage') }}</th>
               <th class="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">{{ t('mailboxes.table.status') }}</th>
               <th class="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('mailboxes.table.modified') }}</th>
               <th class="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">{{ t('common.actions') }}</th>
@@ -88,10 +106,17 @@
           </thead>
           <tbody class="divide-y divide-slate-100 dark:divide-slate-800/50 font-bold">
             <template v-for="item in filteredItems" :key="item.type + item.id">
-              <tr class="group hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all duration-200">
+              <tr :class="selectedItems.has(item.id) ? 'bg-mail-blue-50/30 dark:bg-mail-blue-500/5' : ''" class="group hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all duration-200">
+                <td class="px-6 py-5 text-center">
+                  <input type="checkbox" :checked="selectedItems.has(item.id)" @change="toggleSelect(item.id)" class="w-4 h-4 rounded-md border-slate-300 dark:border-slate-700 text-mail-blue-600 focus:ring-mail-blue-500 cursor-pointer" />
+                </td>
                 <td class="px-8 py-5">
                   <div class="flex items-center gap-3">
-                    <div :class="getTypeColor(item.type)" class="w-2 h-8 rounded-full shadow-sm"></div>
+                    <div 
+                      :class="getIndicatorColor(item)" 
+                      class="w-1.5 h-8 rounded-full shadow-sm bg-gradient-to-b transition-all duration-500"
+                      :title="!item.active ? 'Возможно НЕ ДОСТАВЛЕНО (отключено)' : (item.type === 'mailbox' ? 'POP/IMAP (локальная доставка)' : (item.type === 'domain_alias' ? 'Доставляется для ' + item.goto : 'Пересылка / Алиас'))"
+                    ></div>
                     <div class="flex flex-col">
                       <span class="text-sm font-bold text-slate-900 dark:text-white tracking-tight break-all">{{ item.address }}</span>
                       <div class="flex items-center gap-2 mt-1">
@@ -104,28 +129,40 @@
                   </div>
                 </td>
                 <td class="px-8 py-5">
-                  <div v-if="item.type === 'mailbox'" class="space-y-1">
-                    <div class="text-xs text-slate-700 dark:text-slate-300">{{ item.name || '—' }}</div>
-                    <div class="mt-2 space-y-1">
-                      <div class="flex justify-between text-[9px] font-bold text-slate-500 uppercase tracking-tighter">
-                        <span>{{ formatSize(item.quota_used) }} / {{ item.quota_mb > 0 ? item.quota_mb + ' МБ' : '∞' }}</span>
-                        <span v-if="item.quota_mb > 0">{{ Math.round((item.quota_used / (item.quota_mb * 1024 * 1024)) * 100) }}%</span>
-                        <span v-else>0%</span>
-                      </div>
-                      <div class="w-32 bg-slate-100 dark:bg-slate-800 rounded-full h-1 overflow-hidden">
-                        <div 
-                          class="h-full rounded-full transition-all duration-500" 
-                          :class="(item.quota_used / (item.quota_mb * 1024 * 1024)) > 0.9 ? 'bg-red-500' : 'bg-mail-blue-500'"
-                          :style="{ width: Math.min(100, (item.quota_mb > 0 ? (item.quota_used / (item.quota_mb * 1024 * 1024)) * 100 : 0)) + '%' }"
-                        ></div>
-                      </div>
-                    </div>
-                  </div>
-                  <div v-else class="flex flex-col gap-1">
-                    <div v-for="addr in item.goto_list" :key="addr" class="text-xs text-slate-600 dark:text-slate-400 truncate max-w-xs">
+                  <div v-if="item.type !== 'mailbox'" class="flex flex-col gap-1">
+                    <div v-for="addr in item.goto_list" :key="addr" class="text-xs text-slate-600 dark:text-slate-400 truncate max-w-xs font-bold">
                       {{ addr }}
                     </div>
                   </div>
+                  <span v-else class="text-slate-300 dark:text-slate-700">—</span>
+                </td>
+                <td class="px-8 py-5">
+                  <div v-if="item.type === 'mailbox'" class="space-y-2 max-w-[180px]">
+                    <div class="flex items-center justify-between gap-4">
+                      <div class="flex flex-col">
+                        <span class="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-tighter">{{ formatSize(item.quota_used) }}</span>
+                        <span class="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">{{ item.quota_mb > 0 ? t('common.from') + ' ' + item.quota_mb + ' MB' : '∞' }}</span>
+                      </div>
+                      <span 
+                        class="text-[11px] font-black" 
+                        :class="item.quota_mb > 0 && (item.quota_used / (item.quota_mb * 1024 * 1024)) > 0.8 
+                          ? ((item.quota_used / (item.quota_mb * 1024 * 1024)) > 0.95 ? 'text-red-500' : 'text-amber-500') 
+                          : 'text-slate-400'"
+                      >
+                        {{ item.quota_mb > 0 ? Math.round((item.quota_used / (item.quota_mb * 1024 * 1024)) * 100) : 0 }}%
+                      </span>
+                    </div>
+                    <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden border border-slate-200/50 dark:border-slate-700/50">
+                      <div 
+                        class="h-full rounded-full transition-all duration-700" 
+                        :class="item.quota_mb > 0 && (item.quota_used / (item.quota_mb * 1024 * 1024)) > 0.8 
+                          ? ((item.quota_used / (item.quota_mb * 1024 * 1024)) > 0.95 ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]' : 'bg-amber-500') 
+                          : 'bg-slate-300 dark:bg-slate-600'"
+                        :style="{ width: Math.min(100, (item.quota_mb > 0 ? (item.quota_used / (item.quota_mb * 1024 * 1024)) * 100 : 0)) + '%' }"
+                      ></div>
+                    </div>
+                  </div>
+                  <span v-else class="text-slate-300 dark:text-slate-700">—</span>
                 </td>
               <td class="px-8 py-5 text-center">
                 <button @click="toggleStatus(item)" :class="item.active ? 'bg-green-500 shadow-green-500/20' : 'bg-slate-200 dark:bg-slate-700'" class="relative inline-flex h-5 w-9 items-center rounded-full transition-all active:scale-95 mx-auto">
@@ -150,7 +187,7 @@
 
             <!-- Load More -->
             <tr v-if="hasMore">
-              <td colspan="5" class="px-8 py-8 text-center">
+              <td colspan="6" class="px-8 py-8 text-center">
                 <button @click="loadMore" :disabled="loading" class="px-10 py-3 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-mail-blue-600 hover:text-white transition-all shadow-sm">
                   {{ loading ? t('common.loading') : t('mailboxes.load_more') }}
                 </button>
@@ -158,18 +195,62 @@
             </tr>
 
             <tr v-if="filteredItems.length === 0 && !loading">
-              <td colspan="5" class="px-8 py-20 text-center text-slate-400 font-bold italic">
+              <td colspan="6" class="px-8 py-20 text-center text-slate-400 font-bold italic">
                 {{ searchQuery ? t('mailboxes.empty.search') : t('mailboxes.empty.section') }}
               </td>
             </tr>
           </tbody>
         </table>
       </div>
+
+      <!-- Legend -->
+      <div class="px-8 py-5 bg-slate-50/50 dark:bg-slate-800/20 border-t border-slate-100 dark:border-slate-800/50 flex flex-wrap gap-8 text-[10px] font-black uppercase tracking-widest text-slate-400">
+        <div class="flex items-center gap-2.5 hover:text-red-500 transition-colors">
+          <div class="w-1.5 h-4 rounded-full bg-gradient-to-b from-red-500 to-red-600 shadow-[0_0_8px_rgba(239,68,68,0.3)]"></div>
+          <span>НЕ ДОСТАВЛЕНО / ВЫКЛ.</span>
+        </div>
+        <div class="flex items-center gap-2.5 hover:text-slate-600 dark:hover:text-white transition-colors">
+          <div class="w-1.5 h-4 rounded-full bg-gradient-to-b from-slate-700 to-slate-900"></div>
+          <span>POP/IMAP (Ящик)</span>
+        </div>
+        <div class="flex items-center gap-2.5 hover:text-sky-500 transition-colors">
+          <div class="w-1.5 h-4 rounded-full bg-gradient-to-b from-sky-500 to-sky-700"></div>
+          <span>Алиас домена</span>
+        </div>
+        <div class="flex items-center gap-2.5 hover:text-emerald-500 transition-colors">
+          <div class="w-1.5 h-4 rounded-full bg-gradient-to-b from-emerald-500 to-emerald-700"></div>
+          <span>Пересылка / Алиас</span>
+        </div>
+      </div>
     </div>
 
-    <!-- Modals (Placeholder for now, implementation follows) -->
+    <!-- Batch Actions Floating Bar -->
+    <div v-if="selectedItems.size > 0" class="fixed bottom-10 left-1/2 -translate-x-1/2 bg-slate-900 dark:bg-slate-800 text-white px-8 py-4 rounded-[32px] shadow-2xl flex items-center gap-8 z-50 animate-in slide-in-from-bottom-10 duration-300 border border-white/10">
+      <div class="flex flex-col">
+        <span class="text-xs font-black uppercase tracking-widest">{{ t('mailboxes.batch.selected') }}</span>
+        <span class="text-sm font-bold text-mail-blue-400">{{ selectedItems.size }} {{ t('mailboxes.batch.items') }}</span>
+      </div>
+      <div class="h-8 w-px bg-slate-700"></div>
+      <div class="flex items-center gap-3">
+        <button @click="batchStatus(true)" class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-green-500/20 transition-all active:scale-95">
+          {{ t('common.active') }}
+        </button>
+        <button @click="batchStatus(false)" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/10 transition-all active:scale-95">
+          {{ t('common.inactive') }}
+        </button>
+        <button @click="batchDelete" class="ml-4 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-red-500/20 transition-all active:scale-95">
+          {{ t('common.delete') }}
+        </button>
+      </div>
+      <button @click="selectedItems.clear()" class="p-2 hover:bg-white/10 rounded-xl transition-all">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+      </button>
+    </div>
+
+    <!-- Modals -->
     <MailboxForm v-if="showMailboxModal" :domain="selectedDomain" :item="editingItem" @close="showMailboxModal = false" @save="onSaved" />
     <AliasForm v-if="showAliasModal" :domain="selectedDomain" :item="editingItem" @close="showAliasModal = false" @save="onSaved" />
+    <MassCreateModal v-if="showMassCreate" :domain="selectedDomain" @close="showMassCreate = false" @save="onSaved" />
   </div>
 </template>
 
@@ -178,6 +259,7 @@ import { ref, onMounted, computed, watch, reactive } from 'vue'
 import api from '@/api/axios'
 import MailboxForm from '@/components/MailboxForm.vue'
 import AliasForm from '@/components/AliasForm.vue'
+import MassCreateModal from '@/components/MassCreateModal.vue'
 import { useI18n } from 'vue-i18n'
 
 const { t, locale } = useI18n()
@@ -186,6 +268,7 @@ const domains = ref([])
 const selectedDomain = ref('')
 const searchQuery = ref('')
 const filterType = ref('all') // all, boxes, aliases, domain_aliases
+const filterStatus = ref('all') // all, true, false
 
 const mailboxes = ref([])
 const aliases = ref([])
@@ -205,7 +288,27 @@ const stats = reactive({
 
 const showMailboxModal = ref(false)
 const showAliasModal = ref(false)
+const showMassCreate = ref(false)
 const editingItem = ref(null)
+
+const selectedItems = ref(new Set())
+const isAllSelected = computed(() => {
+  if (filteredItems.value.length === 0) return false
+  return filteredItems.value.every(i => selectedItems.value.has(i.id))
+})
+
+const toggleSelect = (id) => {
+  if (selectedItems.value.has(id)) selectedItems.value.delete(id)
+  else selectedItems.value.add(id)
+}
+
+const toggleSelectAll = () => {
+  if (isAllSelected.value) {
+    filteredItems.value.forEach(i => selectedItems.value.delete(i.id))
+  } else {
+    filteredItems.value.forEach(i => selectedItems.value.add(i.id))
+  }
+}
 
 const fetchDomains = async () => {
   try {
@@ -242,7 +345,8 @@ const fetchData = async (reset = true) => {
       page: currentPage.value,
       limit: pageSize.value,
       search: searchQuery.value || undefined,
-      domain: searchQuery.value ? undefined : selectedDomain.value
+      domain: searchQuery.value ? undefined : selectedDomain.value,
+      active: filterStatus.value !== 'all' ? filterStatus.value : undefined
     }
 
     const [boxesRes, aliasesRes, domAliasesRes] = await Promise.all([
@@ -284,6 +388,10 @@ watch(searchQuery, () => {
   searchTimeout = setTimeout(() => {
     fetchData(true)
   }, 500)
+})
+
+watch(filterStatus, () => {
+  fetchData(true)
 })
 
 const filteredItems = computed(() => {
@@ -336,14 +444,6 @@ const filteredItems = computed(() => {
   return items.sort((a, b) => a.address.localeCompare(b.address))
 })
 
-const getTypeColor = (type) => {
-  switch(type) {
-    case 'mailbox': return 'bg-mail-blue-500'
-    case 'alias': return 'bg-indigo-500'
-    case 'domain_alias': return 'bg-amber-500'
-    default: return 'bg-slate-400'
-  }
-}
 
 const openMailboxModal = (item = null) => {
   editingItem.value = item
@@ -399,11 +499,64 @@ const deleteItem = async (item) => {
   }
 }
 
+const batchDelete = async () => {
+  const count = selectedItems.value.size
+  if (!confirm(t('mailboxes.batch.delete_confirm', { count }))) return
+  try {
+    const list = Array.from(selectedItems.value)
+    // Разделяем на ящики и другие типы (на бекенде пока только ящики поддерживают батч)
+    const boxUsernames = list.filter(id => mailboxes.value.some(m => m.username === id))
+    
+    if (boxUsernames.length > 0) {
+      await api.post('/mailboxes/batch/delete', { usernames: boxUsernames })
+    }
+    
+    selectedItems.value.clear()
+    fetchData()
+  } catch (err) {
+    alert(t('common.error'))
+  }
+}
+
+const batchStatus = async (active) => {
+  try {
+    const list = Array.from(selectedItems.value)
+    const boxUsernames = list.filter(id => mailboxes.value.some(m => m.username === id))
+    
+    if (boxUsernames.length > 0) {
+      await api.post('/mailboxes/batch/status', { usernames: boxUsernames, active })
+    }
+    
+    selectedItems.value.clear()
+    fetchData()
+  } catch (err) {
+    alert(t('common.error'))
+  }
+}
+
 const onSaved = () => {
   showMailboxModal.value = false
   showAliasModal.value = false
   fetchData()
   fetchDomains() // Обновляем статистику в списке доменов
+}
+
+const getIndicatorColor = (item) => {
+  if (!item.active) return 'from-red-500 to-red-600 shadow-[0_0_8px_rgba(239,68,68,0.4)]'
+  
+  if (item.type === 'mailbox') {
+    return 'from-slate-700 to-slate-900' // POP/IMAP
+  }
+  
+  if (item.type === 'domain_alias') {
+    return 'from-sky-500 to-sky-700' // Доставляется для другого домена (Domain Alias)
+  }
+  
+  if (item.type === 'alias') {
+    return 'from-emerald-500 to-emerald-700' // Пересылка / Алиас
+  }
+  
+  return 'from-slate-400 to-slate-500'
 }
 
 const formatDate = (dateStr) => {

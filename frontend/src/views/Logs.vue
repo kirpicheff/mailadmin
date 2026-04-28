@@ -31,26 +31,32 @@ const fetchLogs = async () => {
 
 const translateAction = (action) => {
   if (!action) return ''
+  const act = action.toLowerCase().replace(/ /g, '_')
   const dictionary = {
-    'create domain': t('actions.create_domain'),
-    'update domain': t('actions.update_domain'),
-    'delete domain': t('actions.delete_domain'),
-    'create mailbox': t('actions.create_mailbox'),
-    'create mailbox + alias': t('actions.create_mailbox_alias'),
-    'update mailbox': t('actions.update_mailbox'),
-    'delete mailbox': t('actions.delete_mailbox'),
-    'create alias': t('actions.create_alias'),
-    'update alias': t('actions.update_alias'),
-    'delete alias': t('actions.delete_alias'),
-    'create admin': t('actions.create_admin'),
-    'delete admin': t('actions.delete_admin'),
+    'create_domain': t('actions.create_domain'),
+    'update_domain': t('actions.update_domain'),
+    'delete_domain': t('actions.delete_domain'),
+    'create_mailbox': t('actions.create_mailbox'),
+    'create_mailbox_+_alias': t('actions.create_mailbox_alias'),
+    'update_mailbox': t('actions.update_mailbox'),
+    'delete_mailbox': t('actions.delete_mailbox'),
+    'create_alias': t('actions.create_alias'),
+    'update_alias': t('actions.update_alias'),
+    'delete_alias': t('actions.delete_alias'),
+    'create_admin': t('actions.create_admin'),
+    'delete_admin': t('actions.delete_admin'),
     'login': t('actions.login'),
-    'enable vacation': t('actions.enable_vacation'),
-    'update vacation': t('actions.update_vacation'),
+    'enable_vacation': t('actions.enable_vacation'),
+    'update_vacation': t('actions.update_vacation'),
     'broadcast': t('tools.broadcast.title'),
-    'send email': t('tools.send_mail.title')
+    'send_email': t('tools.send_mail.title'),
+    'batch_create_mailboxes': t('actions.batch_create_mailboxes'),
+    'batch_delete_mailboxes': t('actions.batch_delete_mailboxes'),
+    'batch_status_update': t('actions.batch_status_update'),
+    'create_domain_alias': t('actions.create_domain_alias'),
+    'delete_domain_alias': t('actions.delete_domain_alias')
   }
-  return dictionary[action.toLowerCase()] || action
+  return dictionary[act] || action
 }
 
 const formatDate = (dateStr) => {

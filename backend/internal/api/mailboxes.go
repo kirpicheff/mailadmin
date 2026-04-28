@@ -46,12 +46,17 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 		// Если есть поиск - ищем по всем доступным доменам
 		if search != "" {
 			s := "%" + search + "%"
-			dbQuery = dbQuery.Where("username LIKE ? OR name LIKE ?", s, s)
+			dbQuery = dbQuery.Where("(username LIKE ? OR name LIKE ?)", s, s)
 		} else if domain != "" {
 			dbQuery = dbQuery.Where("domain = ?", domain)
 		} else {
 			// Если домен не указан и поиска нет - ничего не возвращаем или первый домен
 			return c.JSON(http.StatusOK, []models.Mailbox{})
+		}
+
+		// Фильтр по статусу
+		if active := c.QueryParam("active"); active != "" {
+			dbQuery = dbQuery.Where("active = ?", active == "true")
 		}
 
 		var total int64
@@ -270,6 +275,131 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 
 		audit.Log(db.DB, claims.Username, box.Domain, "delete mailbox + alias + vacation", username)
 
+		return c.NoContent(http.StatusNoContent)
+	})
+
+	// Массовое создание ящиков
+	mailboxes.POST("/batch/create", func(c echo.Context) error {
+		type BatchCreateRequest struct {
+			Domain   string   `json:"domain" validate:"required,fqdn"`
+			Prefixes []string `json:"prefixes" validate:"required,min=1"`
+			Password string   `json:"password" validate:"required,min=8"`
+			Quota    int64    `json:"quota" validate:"min=0"`
+			Active   bool     `json:"active"`
+		}
+		var req BatchCreateRequest
+		if err := c.Bind(&req); err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
+		}
+
+		claims := c.Get("user").(*auth.Claims)
+		if !hasDomainAccess(claims, req.Domain) {
+			return c.JSON(http.StatusForbidden, map[string]string{"error": "access denied"})
+		}
+
+		hash, _ := auth.GenerateHash(req.Password)
+		tx := db.DB.Begin()
+
+		createdCount := 0
+		for _, prefix := range req.Prefixes {
+			prefix = strings.TrimSpace(prefix)
+			if prefix == "" {
+				continue
+			}
+			username := prefix + "@" + req.Domain
+			box := models.Mailbox{
+				Username:  username,
+				Password:  hash,
+				Name:      prefix,
+				Quota:     req.Quota,
+				LocalPart: prefix,
+				Domain:    req.Domain,
+				Maildir:   fmt.Sprintf("%s/%s/", req.Domain, prefix),
+				Active:    req.Active,
+				Created:   time.Now(),
+				Modified:  time.Now(),
+			}
+
+			if err := tx.Create(&box).Error; err != nil {
+				continue
+			}
+
+			alias := models.Alias{
+				Address:  username,
+				Goto:     username,
+				Domain:   req.Domain,
+				Created:  time.Now(),
+				Modified: time.Now(),
+				Active:   true,
+			}
+			tx.FirstOrCreate(&alias, models.Alias{Address: username})
+			createdCount++
+		}
+
+		tx.Commit()
+		audit.Log(db.DB, claims.Username, req.Domain, "batch create mailboxes", fmt.Sprintf("%d items", createdCount))
+		return c.JSON(http.StatusCreated, map[string]interface{}{"created": createdCount})
+	})
+
+	// Массовое удаление ящиков
+	mailboxes.POST("/batch/delete", func(c echo.Context) error {
+		type BatchRequest struct {
+			Usernames []string `json:"usernames" validate:"required,min=1"`
+		}
+		var req BatchRequest
+		if err := c.Bind(&req); err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
+		}
+
+		claims := c.Get("user").(*auth.Claims)
+		tx := db.DB.Begin()
+
+		for _, username := range req.Usernames {
+			var box models.Mailbox
+			if err := db.DB.Select("domain").Where("username = ?", username).First(&box).Error; err != nil {
+				continue
+			}
+			if !hasDomainAccess(claims, box.Domain) {
+				continue
+			}
+
+			tx.Where("username = ?", username).Delete(&models.Mailbox{})
+			tx.Where("address = ?", username).Delete(&models.Alias{})
+			tx.Where("email = ?", username).Delete(&models.Vacation{})
+		}
+
+		tx.Commit()
+		audit.Log(db.DB, claims.Username, "multiple", "batch delete mailboxes", fmt.Sprintf("%d items", len(req.Usernames)))
+		return c.NoContent(http.StatusNoContent)
+	})
+
+	// Массовое изменение статуса
+	mailboxes.POST("/batch/status", func(c echo.Context) error {
+		type BatchStatusRequest struct {
+			Usernames []string `json:"usernames" validate:"required,min=1"`
+			Active    bool     `json:"active"`
+		}
+		var req BatchStatusRequest
+		if err := c.Bind(&req); err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
+		}
+
+		claims := c.Get("user").(*auth.Claims)
+		tx := db.DB.Begin()
+
+		for _, username := range req.Usernames {
+			var box models.Mailbox
+			if err := db.DB.Select("domain").Where("username = ?", username).First(&box).Error; err != nil {
+				continue
+			}
+			if !hasDomainAccess(claims, box.Domain) {
+				continue
+			}
+			tx.Model(&models.Mailbox{}).Where("username = ?", username).Update("active", req.Active)
+		}
+
+		tx.Commit()
+		audit.Log(db.DB, claims.Username, "multiple", "batch status update", fmt.Sprintf("%d items to %v", len(req.Usernames), req.Active))
 		return c.NoContent(http.StatusNoContent)
 	})
 }

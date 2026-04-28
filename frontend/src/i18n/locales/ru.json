@@ -27,6 +27,7 @@
     "no": "Нет",
     "save": "Сохранить",
     "cancel": "Отмена",
+    "from": "из",
     "edit": "Изменить",
     "delete": "Удалить",
     "create": "Создать",
@@ -110,11 +111,29 @@
     "actions": {
       "create_box": "Создать ящик",
       "create_alias": "Создать алиас",
+      "mass_create": "Массовое создание",
       "download_csv": "Скачать CSV"
+    },
+    "batch": {
+      "selected": "Выбрано",
+      "items": "объектов",
+      "delete_confirm": "Удалить выбранные объекты ({count} шт.)?"
+    },
+    "mass_modal": {
+      "title": "Массовое создание ящиков",
+      "subtitle": "Быстрое добавление нескольких аккаунтов в домен {domain}",
+      "prefixes_label": "Список имен (префиксов)",
+      "prefixes_hint": "Введите имена (например: ivan, petr) по одному в строке или через запятую",
+      "password_label": "Общий пароль",
+      "quota_label": "Квота для каждого (МБ)",
+      "active_label": "Активировать сразу",
+      "button": "Создать все ящики",
+      "success": "Успешно создано {count} ящиков"
     },
     "table": {
       "address_type": "Адрес / Тип",
-      "target_info": "Куда / Инфо",
+      "recipient": "Получатель (Target)",
+      "usage": "Использование / Квота",
       "status": "Статус",
       "modified": "Изменен",
       "results_search": "Результаты поиска по всем доменам",
@@ -269,7 +288,12 @@
     "delete_alias": "Удаление алиаса",
     "create_admin": "Создание администратора",
     "delete_admin": "Удаление администратора",
-    "login": "Вход в систему"
+    "login": "Вход в систему",
+    "batch_create_mailboxes": "Массовое создание ящиков",
+    "batch_delete_mailboxes": "Массовое удаление ящиков",
+    "batch_status_update": "Массовое изменение статуса",
+    "create_domain_alias": "Создание алиаса домена",
+    "delete_domain_alias": "Удаление алиаса домена"
   },
   "login": {
     "title": "MailAdmin",

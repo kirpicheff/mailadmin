@@ -14,12 +14,21 @@ import (
 func RegisterDomainHandlers(g *echo.Group, secret string) {
 	g.Use(auth.JWTMiddleware(secret))
 
-	// Список доменов с реальной статистикой
 	g.GET("", func(c echo.Context) error {
 		var domains []models.Domain
 
 		claims := c.Get("user").(*auth.Claims)
 		dbQuery := db.DB.Where("domain != ?", "ALL").Model(&models.Domain{})
+
+		// Фильтр по поиску
+		if search := c.QueryParam("search"); search != "" {
+			dbQuery = dbQuery.Where("(domain LIKE ? OR description LIKE ?)", "%"+search+"%", "%"+search+"%")
+		}
+
+		// Фильтр по статусу
+		if active := c.QueryParam("active"); active != "" {
+			dbQuery = dbQuery.Where("active = ?", active == "true")
+		}
 
 		if !claims.SuperAdmin {
 			dbQuery = dbQuery.Where("domain IN (?)", db.DB.Table("domain_admins").Select("domain").Where("username = ?", claims.Username))
