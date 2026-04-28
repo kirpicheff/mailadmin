@@ -9,7 +9,7 @@ const queue = ref([])
 const refreshing = ref(false)
 
 const fetchQueue = async () => {
-  refreshing.ref = true
+  refreshing.value = true
   try {
     const response = await api.get('/system/queue')
     queue.value = response.data
@@ -22,33 +22,33 @@ const fetchQueue = async () => {
 }
 
 const flushQueue = async () => {
-  if (!confirm('Вы уверены, что хотите принудительно отправить всю очередь?')) return
+  if (!confirm(t('queue.confirm.flush'))) return
   try {
     await api.post('/system/queue/flush')
-    alert('Сигнал отправки подан (flush)')
+    alert(t('queue.messages.flush_sent'))
     fetchQueue()
   } catch (error) {
-    alert('Ошибка при выполнении flush')
+    alert(t('queue.messages.flush_error'))
   }
 }
 
 const deleteItem = async (id) => {
-  if (!confirm(`Удалить письмо ${id} из очереди?`)) return
+  if (!confirm(t('queue.confirm.delete', { id }))) return
   try {
     await api.delete(`/system/queue/${id}`)
     fetchQueue()
   } catch (error) {
-    alert('Ошибка при удалении')
+    alert(t('queue.messages.delete_error'))
   }
 }
 
 const clearQueue = async () => {
-  if (!confirm('ВНИМАНИЕ: Это удалит ВСЕ письма из очереди. Продолжить?')) return
+  if (!confirm(t('queue.confirm.delete_all'))) return
   try {
     await api.delete('/system/queue/all')
     fetchQueue()
   } catch (error) {
-    alert('Ошибка при очистке очереди')
+    alert(t('queue.messages.clear_error'))
   }
 }
 
@@ -65,22 +65,22 @@ onMounted(fetchQueue)
     <header class="flex justify-between items-end">
       <div>
         <h1 class="text-4xl font-black text-slate-900 dark:text-white tracking-tight">
-          {{ t('menu.queue') }}
+          {{ t('queue.title') }}
         </h1>
         <p class="text-slate-500 dark:text-slate-400 mt-2 font-medium">
-          Управление зависшими сообщениями в Postfix (MailQ)
+          {{ t('queue.subtitle') }}
         </p>
       </div>
       <div class="flex gap-4">
         <button @click="fetchQueue" :disabled="refreshing" class="px-6 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center gap-2">
           <svg class="w-4 h-4" :class="{'animate-spin': refreshing}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-          Обновить
+          {{ t('queue.refresh') }}
         </button>
         <button @click="flushQueue" class="px-6 py-3 bg-emerald-600 text-white rounded-2xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-emerald-500/20 hover:bg-emerald-700 transition-all">
-          Flush Queue
+          {{ t('queue.flush') }}
         </button>
         <button @click="clearQueue" class="px-6 py-3 bg-red-500 text-white rounded-2xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-red-500/20 hover:bg-red-600 transition-all">
-          Delete All
+          {{ t('queue.delete_all') }}
         </button>
       </div>
     </header>
@@ -93,19 +93,19 @@ onMounted(fetchQueue)
        <svg class="mx-auto h-16 w-16 opacity-10 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
       </svg>
-      <p class="text-xl font-bold italic">Почтовая очередь пуста</p>
-      <p class="mt-2 text-sm">Все сообщения доставлены или очередь еще не заполнена</p>
+      <p class="text-xl font-bold italic">{{ t('queue.empty') }}</p>
+      <p class="mt-2 text-sm">{{ t('queue.empty_hint') }}</p>
     </div>
 
     <div v-else class="glass-panel overflow-hidden">
       <table class="w-full text-left border-collapse">
         <thead>
           <tr class="bg-slate-50/50 dark:bg-slate-800/10 border-b border-slate-100 dark:border-slate-800/50">
-            <th class="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">ID / Дата</th>
-            <th class="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Отправитель</th>
-            <th class="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Получатели</th>
-            <th class="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Размер</th>
-            <th class="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Действия</th>
+            <th class="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">{{ t('queue.table.id_date') }}</th>
+            <th class="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">{{ t('queue.table.sender') }}</th>
+            <th class="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">{{ t('queue.table.recipient') }}</th>
+            <th class="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">{{ t('queue.table.size') }}</th>
+            <th class="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">{{ t('queue.table.actions') }}</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-50 dark:divide-slate-800/50">
@@ -123,7 +123,7 @@ onMounted(fetchQueue)
               <div class="flex flex-col gap-1">
                 <span v-for="rcp in item.recipient" :key="rcp" class="text-xs font-medium text-slate-600 dark:text-slate-400 break-all">{{ rcp }}</span>
                 <div v-if="item.reason" class="mt-2 p-3 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 rounded-xl text-[10px] font-bold text-red-600 dark:text-red-400 leading-relaxed italic">
-                  原因: {{ item.reason }}
+                  {{ t('queue.table.reason') }}: {{ item.reason }}
                 </div>
               </div>
             </td>

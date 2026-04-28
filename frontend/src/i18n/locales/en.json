@@ -448,5 +448,33 @@
       "vacation": "Autoresponder",
       "mark_read": "Mark as read"
     }
+  },
+  "queue": {
+    "title": "Mail Queue",
+    "subtitle": "Manage pending messages in Postfix (MailQ)",
+    "refresh": "Refresh",
+    "flush": "Flush Queue",
+    "delete_all": "Delete All",
+    "empty": "Mail queue is empty",
+    "empty_hint": "All messages delivered or queue hasn't filled up yet",
+    "table": {
+      "id_date": "ID / Date",
+      "sender": "Sender",
+      "recipient": "Recipients",
+      "size": "Size",
+      "actions": "Actions",
+      "reason": "Reason"
+    },
+    "confirm": {
+      "flush": "Are you sure you want to force delivery of all messages?",
+      "delete": "Delete message {id} from queue?",
+      "delete_all": "WARNING: This will delete ALL messages from the queue. Continue?"
+    },
+    "messages": {
+      "flush_sent": "Flush signal sent",
+      "flush_error": "Error executing flush",
+      "delete_error": "Error deleting message",
+      "clear_error": "Error clearing queue"
+    }
   }
 }
