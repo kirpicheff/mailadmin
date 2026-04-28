@@ -62,28 +62,33 @@ func RegisterAliasHandlers(g *echo.Group, secret string) {
 
 	// Создание алиаса
 	aliasGroup.POST("", func(c echo.Context) error {
-		var alias models.Alias
-		if err := c.Bind(&alias); err != nil {
+		type CreateRequest struct {
+			Address string `json:"address" validate:"required,email"`
+			Goto    string `json:"goto" validate:"required"` // Может быть списком через запятую
+			Domain  string `json:"domain" validate:"required,fqdn"`
+			Active  bool   `json:"active"`
+		}
+		var req CreateRequest
+		if err := c.Bind(&req); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
 		}
-
-		// Автоматически вычисляем домен из адреса, если не передан
-		if alias.Domain == "" {
-			for i := len(alias.Address) - 1; i >= 0; i-- {
-				if alias.Address[i] == '@' {
-					alias.Domain = alias.Address[i+1:]
-					break
-				}
-			}
+		if err := c.Validate(&req); err != nil {
+			return err
 		}
 
 		claims := c.Get("user").(*auth.Claims)
-		if !hasDomainAccess(claims, alias.Domain) {
+		if !hasDomainAccess(claims, req.Domain) {
 			return c.JSON(http.StatusForbidden, map[string]string{"error": "access denied to this domain"})
 		}
 
-		alias.Created = time.Now()
-		alias.Modified = time.Now()
+		alias := models.Alias{
+			Address:  req.Address,
+			Goto:     req.Goto,
+			Domain:   req.Domain,
+			Active:   req.Active,
+			Created:  time.Now(),
+			Modified: time.Now(),
+		}
 
 		if err := db.DB.Create(&alias).Error; err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to create alias"})
@@ -107,16 +112,25 @@ func RegisterAliasHandlers(g *echo.Group, secret string) {
 			return c.JSON(http.StatusForbidden, map[string]string{"error": "access denied to this domain"})
 		}
 
-		var update models.Alias
-		if err := c.Bind(&update); err != nil {
+		type UpdateRequest struct {
+			Goto   string `json:"goto" validate:"required"`
+			Active bool   `json:"active"`
+		}
+		var req UpdateRequest
+		if err := c.Bind(&req); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
 		}
+		if err := c.Validate(&req); err != nil {
+			return err
+		}
 
-		if err := db.DB.Model(&existing).Updates(map[string]interface{}{
-			"goto":     update.Goto,
-			"active":   update.Active,
+		updates := map[string]interface{}{
+			"goto":     req.Goto,
+			"active":   req.Active,
 			"modified": time.Now(),
-		}).Error; err != nil {
+		}
+
+		if err := db.DB.Model(&existing).Updates(updates).Error; err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to update alias"})
 		}
 

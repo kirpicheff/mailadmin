@@ -53,9 +53,21 @@ func RegisterVacationHandlers(g *echo.Group, secret string) {
 		username := c.Param("username")
 		claims := c.Get("user").(*auth.Claims)
 
-		var req models.Vacation
+		type UpdateRequest struct {
+			Subject      string    `json:"subject" validate:"required"`
+			Body         string    `json:"body" validate:"required"`
+			Active       bool      `json:"active"`
+			ActiveFrom   time.Time `json:"activefrom"`
+			ActiveUntil  time.Time `json:"activeuntil"`
+			IntervalTime int       `json:"interval_time"`
+		}
+
+		var req UpdateRequest
 		if err := c.Bind(&req); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
+		}
+		if err := c.Validate(&req); err != nil {
+			return err
 		}
 
 		// Проверяем существование ящика
@@ -68,34 +80,43 @@ func RegisterVacationHandlers(g *echo.Group, secret string) {
 			return c.JSON(http.StatusForbidden, map[string]string{"error": "access denied to this domain"})
 		}
 
-		req.Email = username
-		req.Domain = mailbox.Domain
-		req.Modified = time.Now()
-
+		now := time.Now()
 		// UPSERT логика
 		var existing models.Vacation
 		if err := db.DB.Where("email = ?", username).First(&existing).Error; err != nil {
-			req.Created = time.Now()
-			req.Cache = "" // Инициализируем кеш
-			if err := db.DB.Create(&req).Error; err != nil {
+			newVac := models.Vacation{
+				Email:        username,
+				Domain:       mailbox.Domain,
+				Subject:      req.Subject,
+				Body:         req.Body,
+				Active:       req.Active,
+				ActiveFrom:   req.ActiveFrom,
+				ActiveUntil:  req.ActiveUntil,
+				IntervalTime: req.IntervalTime,
+				Created:      now,
+				Modified:     now,
+				Cache:        "",
+			}
+			if err := db.DB.Create(&newVac).Error; err != nil {
 				return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to create vacation"})
 			}
+			audit.Log(db.DB, claims.Username, mailbox.Domain, "enable vacation", username)
+			return c.JSON(http.StatusOK, newVac)
 		} else {
-			if err := db.DB.Model(&existing).Updates(map[string]interface{}{
+			updates := map[string]interface{}{
 				"subject":       req.Subject,
 				"body":          req.Body,
 				"active":        req.Active,
 				"activefrom":    req.ActiveFrom,
 				"activeuntil":   req.ActiveUntil,
 				"interval_time": req.IntervalTime,
-				"modified":      req.Modified,
-			}).Error; err != nil {
+				"modified":      now,
+			}
+			if err := db.DB.Model(&existing).Updates(updates).Error; err != nil {
 				return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to update vacation"})
 			}
+			audit.Log(db.DB, claims.Username, mailbox.Domain, "update vacation", username)
+			return c.JSON(http.StatusOK, existing)
 		}
-
-		audit.Log(db.DB, claims.Username, mailbox.Domain, "update vacation", username)
-
-		return c.JSON(http.StatusOK, req)
 	})
 }

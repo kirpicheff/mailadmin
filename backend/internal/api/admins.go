@@ -48,23 +48,25 @@ func RegisterAdminHandlers(api *echo.Group, secret string) {
 	adminGroup.POST("", func(c echo.Context) error {
 		type CreateRequest struct {
 			models.Admin
-			Password string   `json:"password"`
+			Username string   `json:"username" validate:"required,email"`
+			Password string   `json:"password" validate:"required,min=8"`
 			Domains  []string `json:"domains"`
 		}
 		var req CreateRequest
 		if err := c.Bind(&req); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
 		}
+		if err := c.Validate(&req); err != nil {
+			return err
+		}
 
 		// Хешируем пароль со случайной солью (CRIT-2)
-		if req.Password == "" {
-			return c.JSON(http.StatusBadRequest, map[string]string{"error": "password is required"})
-		}
 		hash, err := auth.GenerateHash(req.Password)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "hashing failed"})
 		}
 
+		req.Admin.Username = req.Username
 		req.Admin.Password = hash
 		req.Admin.PasswordExpiry = time.Now().AddDate(-1, 0, 0) // Принудительная смена
 
@@ -94,16 +96,19 @@ func RegisterAdminHandlers(api *echo.Group, secret string) {
 	adminGroup.PUT("/:username", func(c echo.Context) error {
 		username := c.Param("username")
 		type UpdateRequest struct {
-			Password   string   `json:"password"`
+			Password   string   `json:"password" validate:"omitempty,min=8"`
 			Active     bool     `json:"active"`
 			SuperAdmin bool     `json:"superadmin"`
 			Phone      string   `json:"phone"`
-			EmailOther string   `json:"email_other"`
+			EmailOther string   `json:"email_other" validate:"omitempty,email"`
 			Domains    []string `json:"domains"`
 		}
 		var req UpdateRequest
 		if err := c.Bind(&req); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
+		}
+		if err := c.Validate(&req); err != nil {
+			return err
 		}
 
 		updates := map[string]interface{}{

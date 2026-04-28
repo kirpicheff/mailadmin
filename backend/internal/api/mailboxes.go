@@ -83,52 +83,68 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 
 	// Создание ящика
 	mailboxes.POST("", func(c echo.Context) error {
-		var box models.Mailbox
-		if err := c.Bind(&box); err != nil {
+		type CreateRequest struct {
+			Username    string `json:"username" validate:"required,email"`
+			Password    string `json:"password" validate:"required,min=8"`
+			Name        string `json:"name"`
+			Quota       int64  `json:"quota" validate:"min=0"`
+			Active      bool   `json:"active"`
+			Phone       string `json:"phone"`
+			EmailOther  string `json:"email_other" validate:"omitempty,email"`
+		}
+		var req CreateRequest
+		if err := c.Bind(&req); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
 		}
-
-		// Валидация username (должен быть email)
-		parts := strings.Split(box.Username, "@")
-		if len(parts) != 2 {
-			return c.JSON(http.StatusBadRequest, map[string]string{"error": "username must be a full email address"})
+		if err := c.Validate(&req); err != nil {
+			return err
 		}
-		box.LocalPart = parts[0]
-		box.Domain = parts[1]
 
-		// Установка maildir: domain/user/
-		box.Maildir = fmt.Sprintf("%s/%s/", box.Domain, box.LocalPart)
+		// Валидация username (должен быть email) - мы уже проверили тегом email, 
+		// но нам нужны части для maildir
+		parts := strings.Split(req.Username, "@")
+		localPart := parts[0]
+		domain := parts[1]
 
 		claims := c.Get("user").(*auth.Claims)
-		if !hasDomainAccess(claims, box.Domain) {
+		if !hasDomainAccess(claims, domain) {
 			return c.JSON(http.StatusForbidden, map[string]string{"error": "access denied to this domain"})
 		}
 
 		// Проверка лимита ящиков на домене
 		var domainRec models.Domain
-		if err := db.DB.Where("domain = ?", box.Domain).First(&domainRec).Error; err != nil {
+		if err := db.DB.Where("domain = ?", domain).First(&domainRec).Error; err != nil {
 			return c.JSON(http.StatusNotFound, map[string]string{"error": "domain not found"})
 		}
 
 		if domainRec.Mailboxes > 0 {
 			var count int64
-			db.DB.Model(&models.Mailbox{}).Where("domain = ?", box.Domain).Count(&count)
+			db.DB.Model(&models.Mailbox{}).Where("domain = ?", domain).Count(&count)
 			if count >= int64(domainRec.Mailboxes) {
 				return c.JSON(http.StatusForbidden, map[string]string{"error": "domain mailbox limit reached"})
 			}
 		}
 
 		// Хеширование пароля
-		if box.Password != "" {
-			hash, err := auth.GenerateHash(box.Password)
-			if err != nil {
-				return c.JSON(http.StatusInternalServerError, map[string]string{"error": "hashing failed"})
-			}
-			box.Password = hash
+		hash, err := auth.GenerateHash(req.Password)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "hashing failed"})
 		}
 
-		box.Created = time.Now()
-		box.Modified = time.Now()
+		box := models.Mailbox{
+			Username:   req.Username,
+			Password:   hash,
+			Name:       req.Name,
+			Quota:      req.Quota,
+			LocalPart:  localPart,
+			Domain:     domain,
+			Maildir:    fmt.Sprintf("%s/%s/", domain, localPart),
+			Active:     req.Active,
+			Phone:      req.Phone,
+			EmailOther: req.EmailOther,
+			Created:    time.Now(),
+			Modified:   time.Now(),
+		}
 
 		// Транзакция: создание ящика + алиаса
 		tx := db.DB.Begin()
@@ -173,35 +189,42 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 			return c.JSON(http.StatusForbidden, map[string]string{"error": "access denied to this domain"})
 		}
 
-		var update models.Mailbox
-		if err := c.Bind(&update); err != nil {
+		type UpdateRequest struct {
+			Password   string `json:"password" validate:"omitempty,min=8"`
+			Name       string `json:"name"`
+			Quota      int64  `json:"quota" validate:"min=0"`
+			Active     bool   `json:"active"`
+			Phone      string `json:"phone"`
+			EmailOther string `json:"email_other" validate:"omitempty,email"`
+		}
+		var req UpdateRequest
+		if err := c.Bind(&req); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
+		}
+		if err := c.Validate(&req); err != nil {
+			return err
+		}
+
+		updates := map[string]interface{}{
+			"name":        req.Name,
+			"quota":       req.Quota,
+			"active":      req.Active,
+			"phone":       req.Phone,
+			"email_other": req.EmailOther,
+			"modified":    time.Now(),
 		}
 
 		// Если пароль передан - хешируем безопасной случайной солью
-		if update.Password != "" && !strings.HasPrefix(update.Password, "$6$") {
-			hash, err := auth.GenerateHash(update.Password)
+		if req.Password != "" {
+			hash, err := auth.GenerateHash(req.Password)
 			if err != nil {
 				return c.JSON(http.StatusInternalServerError, map[string]string{"error": "hashing failed"})
 			}
-			update.Password = hash
-		} else {
-			update.Password = existing.Password
+			updates["password"] = hash
 		}
 
-		update.Modified = time.Now()
-
 		// Используем Updates с map или структурой, чтобы избежать затирания полей
-		if err := db.DB.Model(&existing).Updates(map[string]interface{}{
-			"name":            update.Name,
-			"password":        update.Password,
-			"quota":           update.Quota,
-			"active":          update.Active,
-			"phone":           update.Phone,
-			"email_other":     update.EmailOther,
-			"password_expiry": update.PasswordExpiry,
-			"modified":        update.Modified,
-		}).Error; err != nil {
+		if err := db.DB.Model(&existing).Updates(updates).Error; err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to update mailbox"})
 		}
 

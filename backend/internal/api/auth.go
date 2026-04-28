@@ -13,8 +13,8 @@ import (
 )
 
 type LoginRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Username string `json:"username" validate:"required"`
+	Password string `json:"password" validate:"required"`
 }
 
 type TokenResponse struct {
@@ -31,6 +31,9 @@ func RegisterAuthHandlers(e *echo.Group, cfg *config.Config) {
 		req := new(LoginRequest)
 		if err := c.Bind(req); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
+		}
+		if err := c.Validate(req); err != nil {
+			return err
 		}
 
 		var admin models.Admin
@@ -143,16 +146,14 @@ func RegisterAuthHandlers(e *echo.Group, cfg *config.Config) {
 
 	e.POST("/change-password", func(c echo.Context) error {
 		type ChangeRequest struct {
-			NewPassword string `json:"new_password"`
+			NewPassword string `json:"new_password" validate:"required,min=8"`
 		}
 		req := new(ChangeRequest)
 		if err := c.Bind(req); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
 		}
-
-		// Минимальная длина пароля
-		if len(strings.TrimSpace(req.NewPassword)) < 8 {
-			return c.JSON(http.StatusBadRequest, map[string]string{"error": "password must be at least 8 characters"})
+		if err := c.Validate(req); err != nil {
+			return err
 		}
 
 		user := c.Get("user").(*auth.Claims)

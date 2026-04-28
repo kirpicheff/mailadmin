@@ -21,6 +21,9 @@ func main() {
 
 	e := echo.New()
 
+	// Регистрация валидатора
+	e.Validator = api.NewValidator()
+
 	// Middleware: базовые
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
@@ -33,9 +36,9 @@ func main() {
 		HSTSMaxAge:         31536000,
 	}))
 
-	// HIGH-1: CORS-origin из конфигурации (подгруженной из env)
+	// HIGH-1: CORS-origins из конфигурации (поддерживает список доменов)
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins:     []string{cfg.CORSOrigin},
+		AllowOrigins:     cfg.CORSOrigins,
 		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
 		AllowMethods:     []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete},
 		AllowCredentials: true,

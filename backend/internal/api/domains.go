@@ -61,14 +61,42 @@ func RegisterDomainHandlers(g *echo.Group, secret string) {
 
 	// Создание домена
 	g.POST("", func(c echo.Context) error {
-		var domain models.Domain
-		if err := c.Bind(&domain); err != nil {
+		type CreateRequest struct {
+			Domain      string `json:"domain" validate:"required,fqdn"`
+			Description string `json:"description"`
+			Aliases     int    `json:"aliases" validate:"min=0"`
+			Mailboxes   int    `json:"mailboxes" validate:"min=0"`
+			MaxQuota    int64  `json:"maxquota" validate:"min=0"`
+			Quota       int64  `json:"quota" validate:"min=0"`
+			Transport   string `json:"transport"`
+			BackupMX    bool   `json:"backupmx"`
+			Active      bool   `json:"active"`
+		}
+		var req CreateRequest
+		if err := c.Bind(&req); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
+		}
+		if err := c.Validate(&req); err != nil {
+			return err
 		}
 
 		claims := c.Get("user").(*auth.Claims)
 		if !claims.SuperAdmin {
 			return c.JSON(http.StatusForbidden, map[string]string{"error": "only superadmins can create domains"})
+		}
+
+		domain := models.Domain{
+			Domain:      req.Domain,
+			Description: req.Description,
+			Aliases:     req.Aliases,
+			Mailboxes:   req.Mailboxes,
+			MaxQuota:    req.MaxQuota,
+			Quota:       req.Quota,
+			Transport:   req.Transport,
+			BackupMX:    req.BackupMX,
+			Created:     time.Now(),
+			Modified:    time.Now(),
+			Active:      req.Active,
 		}
 
 		// Логика создания с транзакцией
@@ -108,8 +136,22 @@ func RegisterDomainHandlers(g *echo.Group, secret string) {
 			return c.JSON(http.StatusNotFound, map[string]string{"error": "domain not found"})
 		}
 
-		if err := c.Bind(&domain); err != nil {
+		type UpdateRequest struct {
+			Description string `json:"description"`
+			Aliases     int    `json:"aliases" validate:"min=0"`
+			Mailboxes   int    `json:"mailboxes" validate:"min=0"`
+			MaxQuota    int64  `json:"maxquota" validate:"min=0"`
+			Quota       int64  `json:"quota" validate:"min=0"`
+			Transport   string `json:"transport"`
+			BackupMX    bool   `json:"backupmx"`
+			Active      bool   `json:"active"`
+		}
+		var req UpdateRequest
+		if err := c.Bind(&req); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
+		}
+		if err := c.Validate(&req); err != nil {
+			return err
 		}
 
 		claims := c.Get("user").(*auth.Claims)
@@ -117,7 +159,19 @@ func RegisterDomainHandlers(g *echo.Group, secret string) {
 			return c.JSON(http.StatusForbidden, map[string]string{"error": "only superadmins can edit domains"})
 		}
 
-		if err := db.DB.Save(&domain).Error; err != nil {
+		updates := map[string]interface{}{
+			"description": req.Description,
+			"aliases":     req.Aliases,
+			"mailboxes":   req.Mailboxes,
+			"maxquota":    req.MaxQuota,
+			"quota":       req.Quota,
+			"transport":   req.Transport,
+			"backupmx":    req.BackupMX,
+			"active":      req.Active,
+			"modified":    time.Now(),
+		}
+
+		if err := db.DB.Model(&domain).Updates(updates).Error; err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to update domain"})
 		}
 

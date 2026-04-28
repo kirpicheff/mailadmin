@@ -43,14 +43,17 @@ func RegisterToolsHandlers(g *echo.Group, secret string) {
 	// Отправка одиночного письма
 	tools.POST("/send-email", func(c echo.Context) error {
 		type Request struct {
-			From    string `json:"from"`
-			To      string `json:"to"`
-			Subject string `json:"subject"`
-			Body    string `json:"body"`
+			From    string `json:"from" validate:"required,email"`
+			To      string `json:"to" validate:"required,email"`
+			Subject string `json:"subject" validate:"required"`
+			Body    string `json:"body" validate:"required"`
 		}
 		var req Request
 		if err := c.Bind(&req); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
+		}
+		if err := c.Validate(&req); err != nil {
+			return err
 		}
 
 		claims := c.Get("user").(*auth.Claims)
@@ -86,15 +89,18 @@ func RegisterToolsHandlers(g *echo.Group, secret string) {
 	// Широковещательная рассылка
 	tools.POST("/broadcast", func(c echo.Context) error {
 		type Request struct {
-			From          string   `json:"from"`
+			From          string   `json:"from" validate:"required,email"`
 			Domains       []string `json:"domains"`
-			Subject       string   `json:"subject"`
-			Body          string   `json:"body"`
+			Subject       string   `json:"subject" validate:"required"`
+			Body          string   `json:"body" validate:"required"`
 			OnlyMailboxes bool     `json:"only_mailboxes"`
 		}
 		var req Request
 		if err := c.Bind(&req); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
+		}
+		if err := c.Validate(&req); err != nil {
+			return err
 		}
 
 		claims := c.Get("user").(*auth.Claims)
