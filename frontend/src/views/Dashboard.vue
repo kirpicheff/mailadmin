@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import api from '@/api/axios'
 import { useI18n } from 'vue-i18n'
 
@@ -14,7 +14,9 @@ const stats = ref({
   recent_logs: []
 })
 
+const health = ref(null)
 const loading = ref(true)
+let timer = null
 
 const formatBytes = (bytes) => {
   if (!bytes || bytes === 0) return '0 Bytes'
@@ -25,21 +27,9 @@ const formatBytes = (bytes) => {
 }
 
 const translateAction = (action) => {
-  const dictionary = {
-    'create_domain': t('actions.create_domain'),
-    'update_domain': t('actions.update_domain'),
-    'delete_domain': t('actions.delete_domain'),
-    'create_mailbox': t('actions.create_mailbox'),
-    'update_mailbox': t('actions.update_mailbox'),
-    'delete_mailbox': t('actions.delete_mailbox'),
-    'create_alias': t('actions.create_alias'),
-    'update_alias': t('actions.update_alias'),
-    'delete_alias': t('actions.delete_alias'),
-    'create_admin': t('actions.create_admin'),
-    'delete_admin': t('actions.delete_admin'),
-    'login': t('actions.login')
-  }
-  return dictionary[action.toLowerCase()] || action
+  if (!action) return ''
+  const tKey = action.toLowerCase().replace(/ /g, '_')
+  return t(`actions.${tKey}`) || action
 }
 
 const formatDate = (dateStr) => {
@@ -52,144 +42,238 @@ const fetchStats = async () => {
     stats.value = response.data
   } catch (error) {
     console.error('Failed to fetch stats:', error)
+  }
+}
+
+const fetchHealth = async () => {
+  try {
+    const response = await api.get('/system/health')
+    health.value = response.data
+  } catch (err) {
+    console.log('Metrics unavailable (remote)')
   } finally {
     loading.value = false
   }
 }
 
-onMounted(fetchStats)
+const getStatusClass = (status) => {
+  status = status.toUpperCase()
+  if (status === 'RUNNING' || status === 'UP') return 'bg-emerald-500 shadow-emerald-500/50'
+  if (status === 'STOPPED' || status === 'FATAL' || status === 'EXITED') return 'bg-red-500 shadow-red-500/50'
+  return 'bg-amber-500 shadow-amber-500/50'
+}
+
+onMounted(() => {
+  fetchStats()
+  fetchHealth()
+  timer = setInterval(() => {
+    fetchStats()
+    fetchHealth()
+  }, 30000)
+})
+
+onUnmounted(() => {
+  if (timer) clearInterval(timer)
+})
 </script>
 
 <template>
-  <div class="space-y-8 animate-in fade-in duration-500">
-    <header class="flex flex-col gap-2">
-      <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ t('dashboard.title') }}</h1>
-      <p class="text-slate-500 dark:text-slate-400">{{ t('dashboard.subtitle') }}</p>
+  <div class="space-y-8 animate-in fade-in duration-500 pb-10">
+    <header class="flex justify-between items-end">
+      <div class="flex flex-col gap-2">
+        <h1 class="text-4xl font-black tracking-tight text-slate-900 dark:text-white">{{ t('dashboard.title') }}</h1>
+        <p class="text-slate-500 dark:text-slate-400 font-medium">{{ t('dashboard.subtitle') }}</p>
+      </div>
+      <div v-if="health" class="hidden md:flex items-center gap-3">
+        <div class="px-4 py-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
+          <span class="text-[10px] font-black uppercase text-slate-400 tracking-widest mr-2">{{ t('system.uptime') }}:</span>
+          <span class="text-xs font-bold text-mail-blue-600">{{ health.uptime }}</span>
+        </div>
+        <div class="px-4 py-2 bg-mail-blue-600 text-white rounded-2xl font-bold text-xs shadow-lg shadow-mail-blue-500/20">
+          {{ health.hostname }}
+        </div>
+      </div>
     </header>
+
+    <!-- Секция здоровья сервера (только если локально) -->
+    <section v-if="health && health.ram_total" class="space-y-6">
+      <div class="flex items-center gap-2">
+        <div class="w-1.5 h-4 rounded-full bg-mail-blue-500"></div>
+        <h2 class="text-xs font-black uppercase tracking-widest text-slate-400">{{ t('system.title') }}</h2>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <!-- RAM -->
+        <div class="health-card">
+          <div class="flex justify-between mb-2">
+            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('system.ram') }}</span>
+            <span class="text-xs font-bold text-slate-900 dark:text-white">{{ health.ram_perc }}%</span>
+          </div>
+          <div class="text-2xl font-black mb-3">{{ health.ram_used }} <span class="text-[10px] text-slate-500 font-medium">MB</span></div>
+          <div class="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+            <div 
+              class="h-full transition-all duration-1000"
+              :class="health.ram_perc > 80 ? 'bg-red-500' : 'bg-indigo-500'"
+              :style="{ width: health.ram_perc + '%' }"
+            ></div>
+          </div>
+        </div>
+
+        <!-- DISK -->
+        <div class="health-card">
+          <div class="flex justify-between mb-2">
+            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('system.disk') }}</span>
+            <span class="text-xs font-bold text-slate-900 dark:text-white">{{ health.disk_perc }}%</span>
+          </div>
+          <div class="text-2xl font-black mb-3">{{ health.disk_used }} <span class="text-[10px] text-slate-500 font-medium">/ {{ health.disk_total }}</span></div>
+          <div class="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+            <div 
+              class="h-full transition-all duration-1000"
+              :class="health.disk_perc > 90 ? 'bg-red-500' : 'bg-emerald-500'"
+              :style="{ width: health.disk_perc + '%' }"
+            ></div>
+          </div>
+        </div>
+
+        <!-- SSL & LOAD -->
+        <div class="health-card">
+          <div class="flex justify-between mb-2">
+            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">SSL / LOAD</span>
+          </div>
+          <div class="flex items-center gap-4">
+            <div>
+              <div class="text-2xl font-black" :class="health.ssl_days < 10 ? 'text-red-500' : 'text-slate-900 dark:text-white'">{{ health.ssl_days }}</div>
+              <p class="text-[9px] font-bold text-slate-400 uppercase">{{ t('system.ssl_days') }}</p>
+            </div>
+            <div class="w-px h-8 bg-slate-100 dark:bg-slate-800"></div>
+            <div>
+              <div class="text-2xl font-black">{{ health.load }}</div>
+              <p class="text-[9px] font-bold text-slate-400 uppercase">Load Avg</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- FAIL2BAN / QUEUE -->
+        <div class="health-card">
+          <div class="flex justify-between mb-2">
+            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Security / Queue</span>
+          </div>
+          <div class="flex items-center gap-4">
+             <div class="flex flex-col">
+              <div class="text-2xl font-black" :class="health.f2b_count > 0 ? 'text-amber-500' : ''">{{ health.f2b_count }}</div>
+              <p class="text-[9px] font-bold text-slate-400 uppercase">Banned</p>
+            </div>
+            <div class="w-px h-8 bg-slate-100 dark:bg-slate-800"></div>
+            <div class="flex flex-col">
+              <div class="text-2xl font-black" :class="health.queue > 50 ? 'text-red-500' : ''">{{ health.queue }}</div>
+              <p class="text-[9px] font-bold text-slate-400 uppercase">Queue</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Services Small Row -->
+      <div v-if="health.services && health.services.length > 0" class="flex flex-wrap gap-4">
+        <div v-for="srv in health.services" :key="srv.name" 
+             class="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl shadow-sm">
+          <div class="w-2 h-2 rounded-full" :class="getStatusClass(srv.status)"></div>
+          <span class="text-[10px] font-black uppercase text-slate-600 dark:text-slate-400">{{ srv.name }}</span>
+        </div>
+      </div>
+    </section>
 
     <!-- Основные показатели -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      <!-- Домены -->
       <div class="glass-panel p-6 group hover:border-mail-blue-500/50 transition-colors">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{{ t('dashboard.stats.total_domains') }}</p>
-            <p class="text-3xl font-bold mt-2 text-slate-900 dark:text-white">{{ stats.domains_count || 0 }}</p>
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('dashboard.stats.total_domains') }}</p>
+            <p class="text-3xl font-black mt-2 text-slate-900 dark:text-white">{{ stats.domains_count || 0 }}</p>
           </div>
-          <div class="w-12 h-12 rounded-2xl bg-mail-blue-500/10 flex items-center justify-center text-mail-blue-500 group-hover:scale-110 transition-transform">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9h18" />
-            </svg>
+          <div class="w-12 h-12 rounded-2xl bg-mail-blue-500/10 flex items-center justify-center text-mail-blue-500 group-hover:rotate-12 transition-transform">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9h18" /></svg>
           </div>
         </div>
       </div>
 
-      <!-- Ящики -->
       <div class="glass-panel p-6 group hover:border-emerald-500/50 transition-colors">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{{ t('dashboard.stats.mailboxes') }}</p>
-            <p class="text-3xl font-bold mt-2 text-slate-900 dark:text-white">{{ stats.mailboxes_count || 0 }}</p>
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('dashboard.stats.mailboxes') }}</p>
+            <p class="text-3xl font-black mt-2 text-slate-900 dark:text-white">{{ stats.mailboxes_count || 0 }}</p>
           </div>
-          <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 group-hover:scale-110 transition-transform">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
+          <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 group-hover:rotate-12 transition-transform">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
           </div>
         </div>
       </div>
 
-      <!-- Алиасы -->
       <div class="glass-panel p-6 group hover:border-amber-500/50 transition-colors">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{{ t('dashboard.stats.aliases') }}</p>
-            <p class="text-3xl font-bold mt-2 text-slate-900 dark:text-white">{{ stats.aliases_count || 0 }}</p>
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('dashboard.stats.aliases') }}</p>
+            <p class="text-3xl font-black mt-2 text-slate-900 dark:text-white">{{ stats.aliases_count || 0 }}</p>
           </div>
-          <div class="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-            </svg>
+          <div class="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:rotate-12 transition-transform">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
           </div>
         </div>
       </div>
 
-      <!-- Квота (Общая) -->
       <div class="glass-panel p-6 group hover:border-purple-500/50 transition-colors">
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between mb-4">
           <div>
-            <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{{ t('dashboard.stats.disk_usage') }}</p>
-            <p class="text-3xl font-bold mt-2 text-slate-900 dark:text-white text-base">
-              {{ formatBytes(stats.quota_used) }}
-            </p>
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('dashboard.stats.disk_usage') }}</p>
+            <p class="text-2xl font-black mt-1 text-slate-900 dark:text-white">{{ formatBytes(stats.quota_used) }}</p>
           </div>
-          <div class="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-500 group-hover:scale-110 transition-transform">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-            </svg>
+          <div class="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-500 group-hover:rotate-12 transition-transform">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
           </div>
         </div>
-        <div class="mt-4">
-          <div class="flex justify-between text-[10px] mb-1 font-bold text-slate-500 uppercase tracking-tighter">
+        <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
+          <div 
+            class="bg-purple-500 h-full rounded-full transition-all duration-1000" 
+            :style="{ width: (stats.quota_limit > 0 ? (stats.quota_used / stats.quota_limit) * 100 : 0) + '%' }"
+          ></div>
+        </div>
+        <div class="flex justify-between text-[9px] mt-2 font-black text-slate-400 uppercase tracking-widest">
             <span>{{ stats.quota_limit > 0 ? Math.round((stats.quota_used / stats.quota_limit) * 100) : 0 }}% {{ t('dashboard.stats.used_of') }}</span>
             <span>{{ stats.quota_limit > 0 ? formatBytes(stats.quota_limit) : t('common.unlimited') }}</span>
-          </div>
-          <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
-            <div 
-              class="bg-purple-500 h-full rounded-full transition-all duration-1000" 
-              :style="{ width: (stats.quota_limit > 0 ? (stats.quota_used / stats.quota_limit) * 100 : 0) + '%' }"
-            ></div>
-          </div>
         </div>
       </div>
     </div>
 
     <!-- Таблица последних действий -->
-    <div class="grid grid-cols-1 gap-8">
-      <div class="glass-panel p-0 overflow-hidden flex flex-col min-h-[400px]">
-        <div class="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/20">
-          <h2 class="font-bold text-lg">{{ t('dashboard.recent_actions.title') }}</h2>
-          <router-link to="/logs" class="text-xs font-bold text-mail-blue-500 hover:bg-mail-blue-500/10 px-4 py-2 rounded-xl transition-colors">
-            {{ t('dashboard.recent_actions.view_all') }}
-          </router-link>
+    <div class="glass-panel p-0 overflow-hidden flex flex-col">
+      <div class="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/10">
+        <div class="flex items-center gap-3">
+          <div class="w-1.5 h-4 rounded-full bg-mail-blue-500"></div>
+          <h2 class="font-black text-xs uppercase tracking-widest text-slate-400">{{ t('dashboard.recent_actions.title') }}</h2>
         </div>
-        <div class="flex-1 overflow-y-auto">
-          <div v-if="!stats.recent_logs || stats.recent_logs.length === 0" class="h-full flex items-center justify-center p-20 text-slate-400 italic">
-            <div class="text-center">
-              <svg class="mx-auto h-12 w-12 text-slate-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <p class="mt-4">{{ t('dashboard.recent_actions.no_activity') }}</p>
+        <router-link to="/logs" class="text-[10px] font-black uppercase tracking-widest text-mail-blue-500 hover:text-mail-blue-700 transition-colors">
+          {{ t('dashboard.recent_actions.view_all') }} →
+        </router-link>
+      </div>
+      <div class="overflow-y-auto max-h-[600px] divide-y divide-slate-50 dark:divide-slate-800/50">
+        <div v-if="!stats.recent_logs || stats.recent_logs.length === 0" class="py-20 text-center text-slate-400 italic font-medium">
+          {{ t('dashboard.recent_actions.no_activity') }}
+        </div>
+        <div v-for="log in stats.recent_logs" :key="log.id" class="p-6 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-all group">
+          <div class="flex items-center gap-6">
+            <div class="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 group-hover:bg-white dark:group-hover:bg-slate-700 shadow-sm transition-colors">
+              <svg v-if="log.action?.includes('create')" class="w-6 h-6 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" /></svg>
+              <svg v-else-if="log.action?.includes('delete')" class="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+              <svg v-else class="w-6 h-6 text-mail-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
             </div>
-          </div>
-          <div v-else class="divide-y divide-slate-50 dark:divide-slate-800">
-            <div v-for="log in stats.recent_logs || []" :key="log.id" class="p-5 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-              <div class="flex items-start gap-5">
-                <div class="mt-1">
-                  <!-- Иконка в зависимости от действия -->
-                  <div v-if="log.action?.includes('create')" class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
-                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" /></svg>
-                  </div>
-                  <div v-else-if="log.action?.includes('delete')" class="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center">
-                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                  </div>
-                  <div v-else class="w-10 h-10 rounded-xl bg-mail-blue-500/10 text-mail-blue-500 flex items-center justify-center">
-                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                  </div>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="flex justify-between items-baseline mb-1">
-                    <p class="text-sm font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">
-                      {{ log.username }}
-                    </p>
-                    <span class="text-[10px] text-slate-400 font-black uppercase tracking-widest">{{ formatDate(log.timestamp) }}</span>
-                  </div>
-                  <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed capitalize">
-                    {{ translateAction(log.action) }}: <span class="text-slate-500 font-bold decoration-dotted">{{ log.data }}</span>
-                  </p>
-                  <p class="text-[10px] text-slate-400 mt-1 font-bold lowercase">{{ t('dashboard.recent_actions.object') }}: {{ log.domain }}</p>
-                </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex justify-between items-start mb-1">
+                <span class="text-sm font-black text-slate-900 dark:text-white tracking-tight break-all uppercase">{{ log.username }}</span>
+                <span class="text-[10px] text-slate-400 font-black uppercase tracking-widest">{{ formatDate(log.timestamp) }}</span>
               </div>
+              <p class="text-xs text-slate-500 flex items-center gap-2">
+                <span class="font-black text-slate-700 dark:text-slate-300 uppercase tracking-tighter">{{ translateAction(log.action) }}</span>
+                <span class="w-1 h-1 rounded-full bg-slate-300"></span>
+                <span class="font-bold text-mail-blue-600/70">{{ log.data }}</span>
+              </p>
             </div>
           </div>
         </div>
@@ -199,4 +283,27 @@ onMounted(fetchStats)
 </template>
 
 <style scoped>
+.health-card {
+  background-color: var(--card-bg, white);
+  border: 1px solid rgba(0,0,0,0.05);
+  border-radius: 2rem;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+:border-dark .health-card {
+  background-color: #0f172a;
+  border-color: rgba(255,255,255,0.05);
+}
+
+.health-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+/* Fallback if Tailwind context is lost */
+.dark .health-card {
+  background-color: #0f172a;
+  border-color: #1e293b;
+}
 </style>

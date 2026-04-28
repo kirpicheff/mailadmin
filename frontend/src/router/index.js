@@ -52,10 +52,16 @@ const router = createRouter({
       meta: { title: 'Отправка почты' }
     },
     {
-      path: '/system/health',
-      name: 'SystemHealth',
-      component: () => import('../views/SystemHealth.vue'),
-      meta: { title: 'Состояние системы' }
+      path: '/system/queue',
+      name: 'MailQueue',
+      component: () => import('../views/MailQueue.vue'),
+      meta: { title: 'Почтовая очередь' }
+    },
+    {
+      path: '/system/server-logs',
+      name: 'ServerLogs',
+      component: () => import('../views/ServerLogs.vue'),
+      meta: { title: 'Логи сервера' }
     }
   ]
 })

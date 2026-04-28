@@ -4,8 +4,9 @@
     "domains": "Domains",
     "mailboxes": "Mailboxes",
     "logs": "Audit Log",
+    "queue": "Mail Queue",
+    "server_logs": "Server Logs",
     "settings": "Access Settings",
-    "system": "System Health",
     "tools": "Tools"
   },
   "common": {
@@ -18,6 +19,7 @@
       "ru": "Русский",
       "en": "English"
     },
+    "auto_refresh": "Auto-refresh",
     "superadmin": "Superadmin",
     "domain_admin": "Domain Admin",
     "unlimited": "Unlimited",

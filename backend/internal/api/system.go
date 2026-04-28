@@ -42,19 +42,132 @@ type ServiceStatus struct {
 	Info   string `json:"info"`
 }
 
+// QueueItem структура для почтовой очереди
+type QueueItem struct {
+	ID        string   `json:"id"`
+	Size      int      `json:"size"`
+	Arrival   string   `json:"arrival"`
+	Sender    string   `json:"sender"`
+	Recipient []string `json:"recipients"`
+	Reason    string   `json:"reason"`
+}
+
+func getFullQueue() []QueueItem {
+	out := runCmd("postqueue", "-p")
+	if out == "" || strings.Contains(out, "Mail queue is empty") {
+		return []QueueItem{}
+	}
+
+	var items []QueueItem
+	lines := strings.Split(out, "\n")
+
+	// Регулярка для заголовка письма в очереди
+	// Пример: 4B87F40CCF*     493 Mon Oct 14 10:14:44  sender@example.com
+	reHeader := regexp.MustCompile(`^([0-9A-F]+)([\*!]?)\s+(\d+)\s+(\w{3}\s+\w{3}\s+\d+\s+\d+:\d+:\d+)\s+(.+)$`)
+
+	var current *QueueItem
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "-") || strings.HasPrefix(line, "(") {
+			// Если есть причина ошибки (обычно в скобках на следующей строке)
+			if strings.HasPrefix(line, "(") && current != nil {
+				current.Reason = strings.Trim(line, "()")
+			}
+			continue
+		}
+
+		match := reHeader.FindStringSubmatch(line)
+		if len(match) > 0 {
+			if current != nil {
+				items = append(items, *current)
+			}
+			size, _ := strconv.Atoi(match[3])
+			current = &QueueItem{
+				ID:      match[1],
+				Size:    size,
+				Arrival: match[4],
+				Sender:  match[5],
+			}
+		} else if current != nil {
+			// Это получатель (обычно идет после заголовка)
+			current.Recipient = append(current.Recipient, line)
+		}
+	}
+
+	if current != nil {
+		items = append(items, *current)
+	}
+
+	return items
+}
+
 // RegisterSystemHandlers регистрирует маршруты системного мониторинга
 func RegisterSystemHandlers(g *echo.Group, secret string) {
 	system := g.Group("/system")
 	system.Use(auth.JWTMiddleware(secret))
 
-	system.GET("/health", func(c echo.Context) error {
-		claims := c.Get("user").(*auth.Claims)
-		if !claims.SuperAdmin {
-			return c.JSON(http.StatusForbidden, map[string]string{"error": "access denied: superadmin only"})
+	// Проверка на суперадмина
+	system.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			claims := c.Get("user").(*auth.Claims)
+			if !claims.SuperAdmin {
+				return c.JSON(http.StatusForbidden, map[string]string{"error": "superadmin access required"})
+			}
+			return next(c)
 		}
+	})
 
+	system.GET("/health", func(c echo.Context) error {
 		stats := getSystemStats()
 		return c.JSON(http.StatusOK, stats)
+	})
+
+	// Почтовая очередь
+	system.GET("/queue", func(c echo.Context) error {
+		queue := getFullQueue()
+		return c.JSON(http.StatusOK, queue)
+	})
+
+	system.POST("/queue/flush", func(c echo.Context) error {
+		runCmd("postqueue", "-f")
+		return c.NoContent(http.StatusNoContent)
+	})
+
+	system.DELETE("/queue/:id", func(c echo.Context) error {
+		id := c.Param("id")
+		if id == "all" {
+			runCmd("postsuper", "-d", "ALL")
+		} else {
+			runCmd("postsuper", "-d", id)
+		}
+		return c.NoContent(http.StatusNoContent)
+	})
+
+	// Логи сервера
+	system.GET("/logs", func(c echo.Context) error {
+		lines, _ := strconv.Atoi(c.QueryParam("lines"))
+		if lines <= 0 || lines > 1000 {
+			lines = 200
+		}
+
+		// Пытаемся найти лог почты
+		logPaths := []string{"/var/log/mail.log", "/var/log/maillog"}
+		var content string
+		for _, p := range logPaths {
+			if _, err := os.Stat(p); err == nil {
+				out := runCmd("tail", "-n", strconv.Itoa(lines), p)
+				content = out
+				break
+			}
+		}
+
+		// Если файлов нет, пробуем journalctl
+		if content == "" {
+			content = runCmd("journalctl", "-u", "postfix", "-n", strconv.Itoa(lines), "--no-pager")
+		}
+
+		return c.JSON(http.StatusOK, map[string]string{"logs": content})
 	})
 }
 
