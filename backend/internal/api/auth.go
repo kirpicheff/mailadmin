@@ -5,8 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/GehirnInc/crypt"
-	_ "github.com/GehirnInc/crypt/sha512_crypt"
 	"github.com/labstack/echo/v4"
 	"github.com/user/mailadmin/internal/auth"
 	"github.com/user/mailadmin/internal/config"
@@ -76,7 +74,9 @@ func RegisterAuthHandlers(e *echo.Group, cfg *config.Config) {
 		cookie.Value = refreshToken
 		cookie.Expires = time.Now().Add(7 * 24 * time.Hour)
 		cookie.HttpOnly = true
-		cookie.Path = "/api/auth/refresh" // Только для эндпоинта обновления
+		cookie.Secure = true                         // Только по HTTPS
+		cookie.SameSite = http.SameSiteStrictMode    // Защита от CSRF
+		cookie.Path = "/api/auth/refresh"            // Только для эндпоинта обновления
 		c.SetCookie(cookie)
 
 		resp := TokenResponse{
@@ -121,12 +121,14 @@ func RegisterAuthHandlers(e *echo.Group, cfg *config.Config) {
 	})
 
 	e.POST("/logout", func(c echo.Context) error {
-		// Очистка куки
+		// Очистка куки (те же флаги, что при установке)
 		cookie := new(http.Cookie)
 		cookie.Name = "refreshToken"
 		cookie.Value = ""
 		cookie.Expires = time.Now().Add(-1 * time.Hour)
 		cookie.HttpOnly = true
+		cookie.Secure = true
+		cookie.SameSite = http.SameSiteStrictMode
 		cookie.Path = "/api/auth/refresh"
 		c.SetCookie(cookie)
 
@@ -148,16 +150,20 @@ func RegisterAuthHandlers(e *echo.Group, cfg *config.Config) {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
 		}
 
+		// Минимальная длина пароля
+		if len(strings.TrimSpace(req.NewPassword)) < 8 {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "password must be at least 8 characters"})
+		}
+
 		user := c.Get("user").(*auth.Claims)
 
-		// Хешируем новый пароль (SHA512-CRYPT)
-		cryptService := crypt.New(crypt.SHA512)
-		hash, err := cryptService.Generate([]byte(req.NewPassword), []byte("$6$salt"))
+		// Хешируем новый пароль со случайной солью (CRIT-2)
+		hash, err := auth.GenerateHash(req.NewPassword)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "could not hash password"})
 		}
 
-		// Обновляем в базе и ставим срок годности на 1 год вперед
+		// Обновляем в базе и ставим срок годности на 1 год вперёд
 		err = db.DB.Model(&models.Admin{}).Where("username = ?", user.Username).Updates(map[string]interface{}{
 			"password":        hash,
 			"password_expiry": time.Now().AddDate(1, 0, 0), // +1 год

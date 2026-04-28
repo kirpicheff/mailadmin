@@ -55,8 +55,7 @@ func SendEmail(msg *EmailMessage) error {
 func SendWithTLS(host, port, user, password string, msg *EmailMessage) error {
     auth := smtp.PlainAuth("", user, password, host)
     tlsconfig := &tls.Config{
-        InsecureSkipVerify: true,
-        ServerName: host,
+        ServerName: host, // Проверяем сертификат сервера
     }
 
     conn, err := tls.Dial("tcp", host+":"+port, tlsconfig)

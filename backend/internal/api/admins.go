@@ -1,8 +1,6 @@
 package api
 
 import (
-	"github.com/GehirnInc/crypt"
-	_ "github.com/GehirnInc/crypt/sha512_crypt"
 	"gorm.io/gorm"
 	"net/http"
 	"time"
@@ -58,9 +56,11 @@ func RegisterAdminHandlers(api *echo.Group, secret string) {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
 		}
 
-		// Хешируем пароль
-		cryptService := crypt.New(crypt.SHA512)
-		hash, err := cryptService.Generate([]byte(req.Password), []byte("$6$salt"))
+		// Хешируем пароль со случайной солью (CRIT-2)
+		if req.Password == "" {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "password is required"})
+		}
+		hash, err := auth.GenerateHash(req.Password)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "hashing failed"})
 		}
@@ -114,8 +114,11 @@ func RegisterAdminHandlers(api *echo.Group, secret string) {
 		}
 
 		if req.Password != "" {
-			cryptService := crypt.New(crypt.SHA512)
-			hash, _ := cryptService.Generate([]byte(req.Password), []byte("$6$salt"))
+			// Хешируем с рандомной солью (CRIT-2)
+			hash, err := auth.GenerateHash(req.Password)
+			if err != nil {
+				return c.JSON(http.StatusInternalServerError, map[string]string{"error": "hashing failed"})
+			}
 			updates["password"] = hash
 			updates["password_expiry"] = time.Now().AddDate(-1, 0, 0)
 		}

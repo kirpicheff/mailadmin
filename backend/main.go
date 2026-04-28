@@ -1,12 +1,15 @@
 package main
 
 import (
+	"net/http"
+	"time"
+
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/user/mailadmin/internal/api"
 	"github.com/user/mailadmin/internal/config"
 	"github.com/user/mailadmin/internal/db"
-	"net/http"
+	"golang.org/x/time/rate"
 )
 
 func main() {
@@ -18,22 +21,54 @@ func main() {
 
 	e := echo.New()
 
-	// Middleware
+	// Middleware: базовые
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
+
+	// MED-2: Заголовки безопасности
+	e.Use(middleware.SecureWithConfig(middleware.SecureConfig{
+		XSSProtection:      "1; mode=block",
+		ContentTypeNosniff: "nosniff",
+		XFrameOptions:      "DENY",
+		HSTSMaxAge:         31536000,
+	}))
+
+	// HIGH-1: CORS-origin из конфигурации (подгруженной из env)
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins:     []string{"http://localhost:5173", "http://localhost:5174"}, // Для разработки
+		AllowOrigins:     []string{cfg.CORSOrigin},
 		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
+		AllowMethods:     []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete},
 		AllowCredentials: true,
+	}))
+
+	// HIGH-2: Глобальный rate limit (20 запросов/сек на IP)
+	e.Use(middleware.RateLimiterWithConfig(middleware.RateLimiterConfig{
+		Skipper: middleware.DefaultSkipper,
+		Store: middleware.NewRateLimiterMemoryStoreWithConfig(
+			middleware.RateLimiterMemoryStoreConfig{
+				Rate:      rate.Limit(20),
+				Burst:     40,
+				ExpiresIn: 3 * time.Minute,
+			},
+		),
+		IdentifierExtractor: func(ctx echo.Context) (string, error) {
+			return ctx.RealIP(), nil
+		},
+		ErrorHandler: func(context echo.Context, err error) error {
+			return context.JSON(http.StatusForbidden, map[string]string{"error": "rate limit exceeded"})
+		},
+		DenyHandler: func(context echo.Context, identifier string, err error) error {
+			return context.JSON(http.StatusTooManyRequests, map[string]string{"error": "too many requests, slow down"})
+		},
 	}))
 
 	// Группа API
 	apiGroup := e.Group("/api")
 
-	// Тестовый маршрут
+	// Тестовый маршрут (без auth)
 	apiGroup.GET("/status", func(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]string{
-			"status": "online",
+			"status":  "online",
 			"message": "MailAdmin API is running",
 		})
 	})
@@ -66,3 +101,4 @@ func main() {
 	// Запуск сервера
 	e.Logger.Fatal(e.Start(cfg.ListenAddr))
 }
+

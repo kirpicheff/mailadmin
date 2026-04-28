@@ -23,7 +23,10 @@ backend/dist/
 backend/vendor/
 backend/*.exe
 backend/*.test
+backend/*.out
 backend/.env
+mailadmin
+mailadmin.exe
 
 # Node / Vue
 node_modules/
@@ -36,4 +39,3 @@ frontend/stats.html
 # Database
 *.db
 *.sqlite
-*.md

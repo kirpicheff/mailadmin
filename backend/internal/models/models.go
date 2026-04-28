@@ -7,7 +7,7 @@ import (
 // Admin представляет таблицу admin
 type Admin struct {
 	Username       string    `gorm:"primaryKey;column:username;size:255" json:"username"`
-	Password       string    `gorm:"column:password;size:255" json:"password"`
+	Password       string    `gorm:"column:password;size:255" json:"-"` // Никогда не отдавать пароль через API
 	Created        time.Time `gorm:"column:created;not null;default:'2000-01-01 00:00:00'" json:"created"`
 	Modified       time.Time `gorm:"column:modified;not null;default:'2000-01-01 00:00:00'" json:"modified"`
 	Active         bool      `gorm:"column:active;not null;default:1" json:"active"`
@@ -54,7 +54,7 @@ func (DomainAdmin) TableName() string { return "domain_admins" }
 // Mailbox представляет таблицу mailbox
 type Mailbox struct {
 	Username       string    `gorm:"primaryKey;column:username;size:255" json:"username"`
-	Password       string    `gorm:"column:password;size:255" json:"password"`
+	Password       string    `gorm:"column:password;size:255" json:"-"` // Никогда не отдавать пароль через API
 	Name           string    `gorm:"column:name;size:255" json:"name"`
 	Maildir        string    `gorm:"column:maildir;size:255" json:"maildir"`
 	Quota          int64     `gorm:"column:quota;default:0" json:"quota"`

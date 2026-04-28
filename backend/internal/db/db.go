@@ -1,6 +1,7 @@
 package db
 
 import (
+	"fmt"
 	"github.com/user/mailadmin/internal/models"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -52,7 +53,7 @@ func InitDB(dsn string) {
 		
 		// 2. Конвертируем все таблицы
 		for _, table := range tablesToConvert {
-			DB.Exec("ALTER TABLE " + table + " CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
+			DB.Exec(fmt.Sprintf("ALTER TABLE `%s` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci", table))
 		}
 		
 		// 3. Возвращаем ключ обратно
