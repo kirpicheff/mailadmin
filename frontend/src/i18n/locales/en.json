@@ -4,7 +4,8 @@
     "domains": "Domains",
     "mailboxes": "Mailboxes",
     "logs": "Audit Log",
-    "settings": "Access Settings"
+    "settings": "Access Settings",
+    "tools": "Tools"
   },
   "common": {
     "logout": "Logout",
@@ -67,6 +68,7 @@
       "mailboxes": "Mailboxes",
       "quota": "Quota",
       "backup_mx": "Backup MX",
+      "mx_status": "MX Status",
       "modified": "Last Modified",
       "active": "Active"
     },
@@ -153,7 +155,21 @@
     "quota_label": "Quota (MB)",
     "quota_hint": "0 = Use domain settings",
     "status_label": "Access Allowed",
-    "status_hint": "Enable/disable account"
+    "status_hint": "Enable/disable account",
+    "vacation": {
+      "tab": "Vacation",
+      "status": "I'm on vacation (enable)",
+      "subject": "Reply Subject",
+      "body": "Message Text",
+      "dates": "Active Period",
+      "from": "From",
+      "until": "Until",
+      "interval": "Interval",
+      "interval_hint": "Interval between replies to same sender (seconds). 0 = default (24h).",
+      "not_set": "Vacation mode not configured",
+      "default_subject": "I am out of office",
+      "default_body": "Hello!\n\nThank you for your email. I am currently away on vacation and will respond as soon as I return."
+    }
   },
   "alias_form": {
     "title_edit": "Alias Settings",
@@ -262,5 +278,38 @@
       "invalid": "Invalid username or password",
       "server": "Server error. Please try again later."
     }
+  },
+  "tools": {
+    "title": "Tools",
+    "send_mail": {
+      "title": "Send Email",
+      "subtitle": "Send a message from the system",
+      "from": "From:",
+      "to": "To:",
+      "subject": "Subject:",
+      "body": "Body:",
+      "send": "Send Email",
+      "success": "Email sent successfully",
+      "default_subject": "Mail System Test",
+      "default_body": "Hello!\n\nThis is a test message to verify the mail server configuration."
+    },
+    "broadcast": {
+      "title": "Broadcast Message",
+      "subtitle": "Mass email to users",
+      "select_domains": "Send to domains:",
+      "all_domains": "All Domains",
+      "only_mailboxes": "Send to mailboxes only",
+      "send": "Start Broadcast",
+      "success": "Broadcast started in background",
+      "your_name": "Your name:",
+      "default_subject": "Important System Update",
+      "default_body": "Hello!\n\nWe have updated your mailbox parameters. Please use the new settings for access."
+    }
+  },
+  "mx": {
+    "valid": "MX OK",
+    "invalid": "MX Error",
+    "checking": "Checking...",
+    "records": "Records:"
   }
 }

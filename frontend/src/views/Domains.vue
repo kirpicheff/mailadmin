@@ -18,6 +18,7 @@
           <thead>
             <tr class="bg-slate-50/50 dark:bg-slate-800/30 border-b border-slate-200 dark:border-slate-700/50">
               <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">{{ t('domains.table.domain') }}</th>
+              <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap text-center">{{ t('domains.table.mx_status') }}</th>
               <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap text-center">{{ t('domains.table.aliases') }}</th>
               <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap text-center">{{ t('domains.table.mailboxes') }}</th>
               <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap text-center">{{ t('domains.table.quota') }}</th>
@@ -33,6 +34,29 @@
                 <div class="flex flex-col">
                   <span class="text-sm font-bold text-slate-800 dark:text-slate-200">{{ d.domain }}</span>
                   <span class="text-[10px] text-slate-400 mt-0.5 font-medium uppercase tracking-tight">{{ d.description || t('common.none') }}</span>
+                </div>
+              </td>
+
+              <!-- MX Status Column -->
+              <td class="px-6 py-4 text-center">
+                <div v-if="mxStatus[d.domain] === undefined" class="flex flex-col items-center gap-1 opacity-50">
+                  <div class="w-3 h-3 rounded-full border-2 border-slate-300 border-t-mail-blue-500 animate-spin"></div>
+                  <span class="text-[9px] font-bold uppercase tracking-tight">{{ t('mx.checking') }}</span>
+                </div>
+                <div v-else-if="mxStatus[d.domain].valid" class="group/mx relative inline-flex flex-col items-center gap-1">
+                   <div class="w-2.5 h-2.5 rounded-full bg-green-500 shadow-lg shadow-green-500/20"></div>
+                   <span class="text-[9px] font-black text-green-600 dark:text-green-400 uppercase tracking-tight">{{ t('mx.valid') }}</span>
+                   <!-- Tooltip with records -->
+                   <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/mx:block w-48 p-3 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 z-10 animate-in fade-in zoom-in duration-200">
+                      <p class="text-[10px] font-black text-slate-400 uppercase mb-2">{{ t('mx.records') }}</p>
+                      <div class="space-y-1">
+                        <p v-for="rec in mxStatus[d.domain].records" :key="rec" class="text-[10px] font-bold text-slate-700 dark:text-slate-200 truncate">{{ rec }}</p>
+                      </div>
+                   </div>
+                </div>
+                <div v-else class="flex flex-col items-center gap-1">
+                   <div class="w-2.5 h-2.5 rounded-full bg-red-500 shadow-lg shadow-red-500/20"></div>
+                   <span class="text-[9px] font-black text-red-600 dark:text-red-400 uppercase tracking-tight">{{ t('mx.invalid') }}</span>
                 </div>
               </td>
               
@@ -227,6 +251,7 @@ import { useI18n } from 'vue-i18n'
 const { t, locale } = useI18n()
 
 const domains = ref([])
+const mxStatus = ref({}) // Кэш статусов MX
 const showModal = ref(false)
 const isEdit = ref(false)
 
@@ -247,9 +272,22 @@ const fetchDomains = async () => {
   try {
     const { data } = await api.get('/domains')
     domains.value = data
+    // После загрузки доменов запускаем проверку MX
+    checkAllMX()
   } catch (err) {
     console.error('Error fetching domains:', err)
   }
+}
+
+const checkAllMX = async () => {
+  domains.value.forEach(async (d) => {
+    try {
+      const { data } = await api.get(`/tools/check-mx/${d.domain}`)
+      mxStatus.value[d.domain] = data
+    } catch (e) {
+      mxStatus.value[d.domain] = { valid: false }
+    }
+  })
 }
 
 const openCreateModal = () => {
@@ -271,7 +309,6 @@ const openCreateModal = () => {
 
 const editDomain = (domainData) => {
   isEdit.value = true
-  // Обрезаем технические поля статистики для формы
   const { mailboxes_count, aliases_count, quota_used, ...pureDomain } = domainData
   Object.assign(form, pureDomain)
   showModal.value = true

@@ -59,6 +59,10 @@ func main() {
 	api.RegisterLogHandlers(apiGroup, cfg.JWTSecret)
 	api.RegisterStatsHandlers(apiGroup, cfg.JWTSecret)
 
+	// Инструменты и Автоответчик
+	api.RegisterToolsHandlers(apiGroup, cfg.JWTSecret)
+	api.RegisterVacationHandlers(apiGroup, cfg.JWTSecret)
+
 	// Запуск сервера
 	e.Logger.Fatal(e.Start(cfg.ListenAddr))
 }

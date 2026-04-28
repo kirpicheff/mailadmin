@@ -141,3 +141,12 @@ type Vacation struct {
 }
 
 func (Vacation) TableName() string { return "vacation" }
+
+// VacationNotification представляет таблицу vacation_notification
+type VacationNotification struct {
+	OnVacation string    `gorm:"primaryKey;column:on_vacation;size:255" json:"on_vacation"`
+	Notified   string    `gorm:"primaryKey;column:notified;size:255" json:"notified"`
+	NotifiedAt time.Time `gorm:"column:notified_at;not null;default:CURRENT_TIMESTAMP" json:"notified_at"`
+}
+
+func (VacationNotification) TableName() string { return "vacation_notification" }

@@ -37,6 +37,11 @@ const router = createRouter({
       path: '/logs',
       name: 'Logs',
       component: () => import('../views/Logs.vue')
+    },
+    {
+      path: '/tools/send-mail',
+      name: 'SendMail',
+      component: () => import('../views/SendMail.vue')
     }
   ]
 })
