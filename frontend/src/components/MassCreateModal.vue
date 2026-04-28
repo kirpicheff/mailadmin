@@ -30,8 +30,13 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div class="space-y-3">
             <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">{{ t('mailboxes.mass_modal.password_label') }}</label>
-            <input v-model="form.password" type="text" required
-              class="w-full px-6 py-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 text-slate-900 dark:text-white focus:border-indigo-500 transition-all outline-none font-bold text-sm" />
+            <div class="flex gap-2">
+              <input v-model="form.password" type="text" required
+                class="w-full px-6 py-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 text-slate-900 dark:text-white focus:border-indigo-500 transition-all outline-none font-bold text-sm" />
+              <button type="button" @click="generatePassword" class="px-5 bg-slate-100 dark:bg-slate-800 text-slate-600 rounded-2xl hover:bg-slate-200 transition-all border border-slate-200 dark:border-slate-700 active:scale-95 shadow-sm" :title="t('mailbox_form.password_generate')">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357-2H15" /></svg>
+              </button>
+            </div>
           </div>
 
           <div class="space-y-3">
@@ -82,10 +87,23 @@ const loading = ref(false)
 const rawPrefixes = ref('')
 
 const form = reactive({
-  password: Math.random().toString(36).slice(-10),
+  password: '',
   quota: 1024,
   active: true
 })
+
+const generatePassword = () => {
+  const charset = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz34679#$@!%&*"
+  let res = ""
+  const len = 12
+  for (let i = 0; i < len; i++) {
+    res += charset.charAt(Math.floor(Math.random() * charset.length))
+  }
+  form.password = res
+}
+
+// Генерируем при первом открытии
+generatePassword()
 
 const save = async () => {
   if (!rawPrefixes.value.trim()) return
