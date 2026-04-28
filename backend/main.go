@@ -42,6 +42,7 @@ func main() {
 		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
 		AllowMethods:     []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete},
 		AllowCredentials: true,
+		ExposeHeaders:    []string{"X-Total-Count"},
 	}))
 
 	// HIGH-2: Глобальный rate limit (20 запросов/сек на IP)

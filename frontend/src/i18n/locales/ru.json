@@ -53,7 +53,8 @@
     "description": "Описание",
     "name": "Имя",
     "password": "Пароль",
-    "days_short": "дн"
+    "days_short": "дн",
+    "items": "объектов"
   },
   "dashboard": {
     "title": "Дашборд",
@@ -288,6 +289,8 @@
     "create_mailbox_alias": "Создание ящика + алиас",
     "update_mailbox": "Изменение ящика",
     "delete_mailbox": "Удаление ящика",
+    "update_vacation": "Изменение автоответчика (Legacy)",
+    "enable_vacation": "Включение автоответчика (Legacy)",
     "create_alias": "Создание алиаса",
     "update_alias": "Изменение алиаса",
     "delete_alias": "Удаление алиаса",

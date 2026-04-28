@@ -21,12 +21,23 @@ const fetchLogs = async () => {
       }
     })
     logs.value = response.data
-    totalLogs.value = parseInt(response.headers['x-total-count'] || 0)
+    // Handle both header cases (some proxies lower-case headers)
+    const total = response.headers['x-total-count'] || response.headers['X-Total-Count']
+    totalLogs.value = parseInt(total || 0)
   } catch (error) {
     console.error('Failed to fetch logs:', error)
   } finally {
     loading.value = false
   }
+}
+
+const translateData = (data) => {
+  if (!data) return ''
+  // Handle "X items" or "X items to true/false"
+  if (data.includes('items')) {
+    return data.replace('items', t('common.items'))
+  }
+  return data
 }
 
 const translateAction = (action) => {
@@ -119,7 +130,7 @@ onMounted(fetchLogs)
                 </span>
               </td>
               <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400 font-medium">
-                {{ log.data }}
+                {{ translateData(log.data) }}
               </td>
             </tr>
           </tbody>
