@@ -23,7 +23,8 @@ func RegisterLogHandlers(g *echo.Group, secret string) {
 		if page <= 0 {
 			page = 1
 		}
-		if limit <= 0 {
+		// MED-1: верхняя граница limit для защиты от выгрузки всей таблицы
+		if limit <= 0 || limit > 500 {
 			limit = 50
 		}
 		offset := (page - 1) * limit

@@ -15,6 +15,19 @@ import (
 	"github.com/user/mailadmin/internal/models"
 )
 
+// maxSieveSize — максимальный размер rules_json в Байтах (MED-5)
+const maxSieveSize = 65536
+
+// isValidSieveUsername проверяет, что username является валидным email (MED-2)
+func isValidSieveUsername(username string) bool {
+	parts := strings.Split(username, "@")
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		return false
+	}
+	// Имя домена должно содержать точку (example.com)
+	return strings.Contains(parts[1], ".")
+}
+
 func RegisterSieveHandlers(g *echo.Group, secret string, cfg *config.Config) {
 	g.Use(auth.JWTMiddleware(secret))
 
@@ -25,10 +38,11 @@ func RegisterSieveHandlers(g *echo.Group, secret string, cfg *config.Config) {
 
 		// Проверка доступа
 		if username != "GLOBAL" {
-			parts := strings.Split(username, "@")
-			if len(parts) != 2 {
+			// MED-2: валидируем username как email до проверки домена
+			if !isValidSieveUsername(username) {
 				return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid username"})
 			}
+			parts := strings.Split(username, "@")
 			if !hasDomainAccess(claims, parts[1]) {
 				return c.JSON(http.StatusForbidden, map[string]string{"error": "access denied"})
 			}
@@ -65,12 +79,18 @@ func RegisterSieveHandlers(g *echo.Group, secret string, cfg *config.Config) {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
 		}
 
+		// MED-5: ограничение размера rules_json для предотвращения записи мусора на диск
+		if len(req.RulesJSON) > maxSieveSize {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "rules_json too large"})
+		}
+
 		// Проверка доступа (аналогично GET)
 		if username != "GLOBAL" {
-			parts := strings.Split(username, "@")
-			if len(parts) != 2 {
+			// MED-2: валидируем username как email до формирования пути к файлу
+			if !isValidSieveUsername(username) {
 				return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid username"})
 			}
+			parts := strings.Split(username, "@")
 			if !hasDomainAccess(claims, parts[1]) {
 				return c.JSON(http.StatusForbidden, map[string]string{"error": "access denied"})
 			}

@@ -62,12 +62,11 @@ func RegisterDiagnosticsHandlers(g *echo.Group, secret string) {
 
 	g.GET("/:domain", func(c echo.Context) error {
 		domain := c.Param("domain")
-		
-		// Ограничение доступа: только для владельцев домена или суперадминов
+
+		// CRIT-3: проверка доступа — только владелец домена или суперадмин
 		claims := c.Get("user").(*auth.Claims)
-		if !claims.SuperAdmin {
-			// Проверяем, есть ли у админа доступ к этому домену (заглушка, можно добавить проверку в БД)
-			// Но для простоты пока оставим так, или импортируем проверку из другого места
+		if !claims.SuperAdmin && !hasDomainAccess(claims, domain) {
+			return c.JSON(http.StatusForbidden, map[string]string{"error": "access denied"})
 		}
 
 		result := DiagnosticResult{

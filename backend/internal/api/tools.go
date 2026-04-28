@@ -81,7 +81,7 @@ func RegisterToolsHandlers(g *echo.Group, secret string) {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to send email: " + err.Error()})
 		}
 
-		audit.Log(db.DB, claims.Username, "*", "отправка письма", fmt.Sprintf("Кому: %s, Тема: %s", req.To, req.Subject))
+		audit.Log(db.DB, claims.Username, "*", "send email", fmt.Sprintf("To: %s, Subj: %s", req.To, req.Subject))
 
 		return c.JSON(http.StatusOK, map[string]string{"message": "Email sent successfully"})
 	})

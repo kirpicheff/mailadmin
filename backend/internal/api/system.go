@@ -3,6 +3,7 @@ package api
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -13,7 +14,9 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/user/mailadmin/internal/audit"
 	"github.com/user/mailadmin/internal/auth"
+	"github.com/user/mailadmin/internal/db"
 )
 
 // SystemStats структура для ответа
@@ -51,6 +54,15 @@ type QueueItem struct {
 	Recipient []string `json:"recipients"`
 	Reason    string   `json:"reason"`
 }
+
+// validQueueID — допустимый формат ID очереди Postfix (hex, 9–16 символов) (CRIT-2)
+var validQueueID = regexp.MustCompile(`^[0-9A-F]{9,16}$`)
+
+// validIP — допустимый формат IPv4 или IPv6 (HIGH-1)
+var validIP = regexp.MustCompile(`^(\d{1,3}\.){3}\d{1,3}$|^[0-9a-fA-F:]+$`)
+
+// validJail — допустимое имя jail в fail2ban (HIGH-1)
+var validJail = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 
 func getFullQueue() []QueueItem {
 	out := runCmd("postqueue", "-p")
@@ -131,15 +143,26 @@ func RegisterSystemHandlers(g *echo.Group, secret string) {
 
 	system.POST("/queue/flush", func(c echo.Context) error {
 		runCmd("postqueue", "-f")
+		claims := c.Get("user").(*auth.Claims)
+		audit.Log(db.DB, claims.Username, "system", "queue flush", "все письма")
 		return c.NoContent(http.StatusNoContent)
 	})
 
 	system.DELETE("/queue/:id", func(c echo.Context) error {
 		id := c.Param("id")
+
+		// CRIT-2: валидация ID очереди — только hex-формат Postfix или "all"
+		if id != "all" && !validQueueID.MatchString(id) {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid queue id"})
+		}
+
+		claims := c.Get("user").(*auth.Claims)
 		if id == "all" {
 			runCmd("postsuper", "-d", "ALL")
+			audit.Log(db.DB, claims.Username, "system", "queue delete", "ALL")
 		} else {
 			runCmd("postsuper", "-d", id)
+			audit.Log(db.DB, claims.Username, "system", "queue delete", id)
 		}
 		return c.NoContent(http.StatusNoContent)
 	})
@@ -165,20 +188,22 @@ func RegisterSystemHandlers(g *echo.Group, secret string) {
 
 		if logFile != "" {
 			if search != "" {
-				// Используем grep для поиска (последние N совпадений)
-				// sh -c "grep -i 'pattern' file | tail -n lines"
-				shCmd := fmt.Sprintf("grep -i %s %s | tail -n %d", strconv.Quote(search), logFile, lines)
-				content = runCmd("sh", "-c", shCmd)
+				// CRIT-1: не используем sh -c, передаём аргументы напрямую
+				// grep возвращает все совпадения, затем ограничиваем в Go
+				out := runCmdWithStdout("grep", "-i", search, logFile)
+				content = lastNLines(out, lines)
 			} else {
 				content = runCmd("tail", "-n", strconv.Itoa(lines), logFile)
 			}
 		}
 
-		// Если файлов нет или пусто (и нет поиска), пробуем journalctl
+		// Если файлов нет или пусто, пробуем journalctl
 		if content == "" && logFile == "" {
 			if search != "" {
-				shCmd := fmt.Sprintf("journalctl -u postfix --no-pager | grep -i %s | tail -n %d", strconv.Quote(search), lines)
-				content = runCmd("sh", "-c", shCmd)
+				// CRIT-1: journalctl + grep — тоже без sh -c
+				jOut := runCmd("journalctl", "-u", "postfix", "--no-pager")
+				filtered := grepFilter(jOut, search)
+				content = lastNLines(filtered, lines)
 			} else {
 				content = runCmd("journalctl", "-u", "postfix", "-n", strconv.Itoa(lines), "--no-pager")
 			}
@@ -227,20 +252,74 @@ func RegisterSystemHandlers(g *echo.Group, secret string) {
 		if ip == "" || jail == "" {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "ip and jail required"})
 		}
+
+		// HIGH-1: валидация формата IP и имени jail
+		if !validIP.MatchString(ip) {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid ip address format"})
+		}
+		if !validJail.MatchString(jail) {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid jail name"})
+		}
+
 		runCmd("fail2ban-client", "set", jail, "unbanip", ip)
+
+		// MED-4: аудит разбана IP
+		claims := c.Get("user").(*auth.Claims)
+		audit.Log(db.DB, claims.Username, "system", "fail2ban unban", fmt.Sprintf("ip=%s jail=%s", ip, jail))
+
 		return c.NoContent(http.StatusNoContent)
 	})
 }
 
+// runCmd выполняет команду с таймаутом 10 секунд (LOW-1 / HIGH-2)
 func runCmd(name string, arg ...string) string {
-	cmd := exec.Command(name, arg...)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, name, arg...)
 	var out bytes.Buffer
 	cmd.Stdout = &out
-	err := cmd.Run()
-	if err != nil {
+	if err := cmd.Run(); err != nil {
 		return ""
 	}
 	return strings.TrimSpace(out.String())
+}
+
+// runCmdWithStdout выполняет команду с таймаутом и возвращает весь вывод (без TrimSpace)
+// Используется когда нужно сохранить переводы строк для дальнейшей обработки
+func runCmdWithStdout(name string, arg ...string) string {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, name, arg...)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	_ = cmd.Run() // grep возвращает код 1 если ничего не найдено — это нормально
+	return out.String()
+}
+
+// lastNLines возвращает последние n строк из текста (CRIT-1)
+func lastNLines(text string, n int) string {
+	if text == "" {
+		return ""
+	}
+	lines := strings.Split(strings.TrimRight(text, "\n"), "\n")
+	if len(lines) <= n {
+		return strings.Join(lines, "\n")
+	}
+	return strings.Join(lines[len(lines)-n:], "\n")
+}
+
+// grepFilter фильтрует строки, содержащие подстроку (регистронезависимо), без sh -c (CRIT-1)
+func grepFilter(text, pattern string) string {
+	lower := strings.ToLower(pattern)
+	var matched []string
+	scanner := bufio.NewScanner(strings.NewReader(text))
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.Contains(strings.ToLower(line), lower) {
+			matched = append(matched, line)
+		}
+	}
+	return strings.Join(matched, "\n")
 }
 
 func getSystemStats() SystemStats {
