@@ -102,6 +102,10 @@ func main() {
 	api.RegisterToolsHandlers(apiGroup, cfg.JWTSecret)
 	api.RegisterVacationHandlers(apiGroup, cfg.JWTSecret)
 
+	// Диагностика
+	diagGroup := apiGroup.Group("/diagnostics")
+	api.RegisterDiagnosticsHandlers(diagGroup, cfg.JWTSecret)
+
 	// Запуск сервера
 	e.Logger.Fatal(e.Start(cfg.ListenAddr))
 }

@@ -332,6 +332,49 @@
     "ssl_days": "days remaining",
     "protected": "System Protected",
     "shields_active": "All shields active. 24/7",
-    "local_server_warning": "Note: this monitoring only functions when the control panel is running directly on the mail server."
+    "local_server_warning": "Note: this monitoring only functions when the control panel is running directly on the mail server.",
+    "diagnostics": {
+      "title": "Domain Diagnostics",
+      "subtitle": "Complete check of DNS records and security",
+      "button": "Diagnostics",
+      "checking": "Running diagnostics...",
+      "overall": "Overall Status",
+      "dns_records": "DNS Records",
+      "ssl_status": "Security (SSL)",
+      "rbl_status": "Blacklists (RBL)",
+      "mx": {
+        "title": "MX Records",
+        "hint": "Specifies where to deliver mail"
+      },
+      "spf": {
+        "title": "SPF Record",
+        "hint": "List of authorized sending servers",
+        "valid": "Configured correctly",
+        "invalid": "Record not found or invalid"
+      },
+      "dmarc": {
+        "title": "DMARC",
+        "hint": "Rules for handling mail on your behalf",
+        "valid": "Protection enabled",
+        "invalid": "Configuration recommended"
+      },
+      "dkim": {
+        "title": "DKIM Signature",
+        "hint": "Digital signature to confirm ownership",
+        "found": "Selector {selector} is active",
+        "not_found": "Key not detected"
+      },
+      "ssl": {
+        "valid": "Valid",
+        "expired": "Expired or invalid",
+        "issuer": "Issuer",
+        "expires": "Expires"
+      },
+      "rbl": {
+        "clean": "Clean",
+        "listed": "Listed in blacklist!",
+        "server": "Check server"
+      }
+    }
   }
 }
