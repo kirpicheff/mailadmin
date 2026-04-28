@@ -82,6 +82,19 @@ The frontend interface follows a unified set of rules:
 - Installed Node.js (for frontend building).
 - Database (MySQL / MariaDB or compatible) with `utf8mb4` encoding.
 
+### Configuration (.env)
+Before running the application, create a `.env` file in the `backend` directory. You can use `.env.example` as a template:
+
+```bash
+cp .env.example .env
+```
+
+Key variables:
+- `DB_DSN`: Database connection string (DSN). Ensure `parseTime=True` is included.
+- `JWT_SECRET`: A secure key for signing tokens (minimum 32 characters recommended).
+- `LISTEN_ADDR`: The address and port for the Go server (e.g., `:8080`).
+- `CORS_ORIGIN`: The URL of your frontend (required for cross-origin requests).
+
 ### Running the Backend
 The backend uses configuration, usually from environment files (ENV) or the `internal/config` setup.
 
@@ -194,6 +207,19 @@ For production use, it is recommended to compile the frontend (`npm run build`) 
 - Установленный Go версии `1.20` или новее.
 - Установленный Node.js (для сборки фронтенда).
 - База данных (MySQL / MariaDB или совместимая) с кодировкой `utf8mb4`.
+
+### Конфигурация (.env)
+Перед запуском приложения создайте файл `.env` в директории `backend`. Вы можете использовать `.env.example` как шаблон:
+
+```bash
+cp .env.example .env
+```
+
+Основные переменные:
+- `DB_DSN`: Строка подключения к БД (DSN). Убедитесь, что параметр `parseTime=True` включен.
+- `JWT_SECRET`: Секретный ключ для подписи токенов (рекомендуется минимум 32 символа).
+- `LISTEN_ADDR`: Адрес и порт для запуска Go-сервера (например, `:8080`).
+- `CORS_ORIGIN`: URL вашего фронтенда (необходим для разрешения кросс-доменных запросов).
 
 ### Запуск Backend-части
 Бэкенд использует конфигурацию, как правило, из файлов среды (ENV) или конфига конфигуратора `internal/config`.
