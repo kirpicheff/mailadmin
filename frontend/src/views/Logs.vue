@@ -55,6 +55,8 @@ const translateAction = (action) => {
     'update_alias': t('actions.update_alias'),
     'delete_alias': t('actions.delete_alias'),
     'create_admin': t('actions.create_admin'),
+    'update_admin': t('actions.update_admin'),
+    'edit_admin': t('actions.edit_admin'),
     'delete_admin': t('actions.delete_admin'),
     'login': t('actions.login'),
     'enable_vacation': t('actions.enable_vacation'),

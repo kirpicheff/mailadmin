@@ -291,6 +291,8 @@
     "update_alias": "Update Alias",
     "delete_alias": "Delete Alias",
     "create_admin": "Create administrator",
+    "update_admin": "Update administrator",
+    "edit_admin": "Update administrator",
     "delete_admin": "Delete administrator",
     "login": "System login",
     "batch_create_mailboxes": "Batch create mailboxes",
