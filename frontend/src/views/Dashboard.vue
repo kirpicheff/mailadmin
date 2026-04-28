@@ -135,7 +135,7 @@ onUnmounted(() => {
             <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('system.ram') }}</span>
             <span class="text-xs font-bold text-slate-900 dark:text-white">{{ health.ram_perc }}%</span>
           </div>
-          <div class="text-2xl font-black mb-3">{{ health.ram_used }} <span class="text-[10px] text-slate-500 font-medium">MB</span></div>
+          <div class="text-2xl font-black mb-3 text-slate-900 dark:text-white">{{ health.ram_used }} <span class="text-[10px] text-slate-500 font-medium">MB</span></div>
           <div class="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
             <div 
               class="h-full transition-all duration-1000"
@@ -151,7 +151,7 @@ onUnmounted(() => {
             <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('system.disk') }}</span>
             <span class="text-xs font-bold text-slate-900 dark:text-white">{{ health.disk_perc }}%</span>
           </div>
-          <div class="text-2xl font-black mb-3">{{ health.disk_used }} <span class="text-[10px] text-slate-500 font-medium">/ {{ health.disk_total }}</span></div>
+          <div class="text-2xl font-black mb-3 text-slate-900 dark:text-white">{{ health.disk_used }} <span class="text-[10px] text-slate-500 font-medium">/ {{ health.disk_total }}</span></div>
           <div class="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
             <div 
               class="h-full transition-all duration-1000"
@@ -161,41 +161,65 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <!-- SSL & LOAD -->
+        <!-- SSL Сертификат -->
         <div class="health-card">
           <div class="flex justify-between mb-2">
-            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">SSL / LOAD</span>
+            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">SSL Сертификат</span>
           </div>
-          <div class="flex items-center gap-4">
-            <div>
-              <div class="text-2xl font-black" :class="health.ssl_days < 10 ? 'text-red-500' : 'text-slate-900 dark:text-white'">{{ health.ssl_days }}</div>
-              <p class="text-[9px] font-bold text-slate-400 uppercase">{{ t('system.ssl_days') }}</p>
-            </div>
-            <div class="w-px h-8 bg-slate-100 dark:bg-slate-800"></div>
-            <div>
-              <div class="text-2xl font-black">{{ health.load }}</div>
-              <p class="text-[9px] font-bold text-slate-400 uppercase">Load Avg</p>
-            </div>
-          </div>
+          <div class="text-2xl font-black mb-3" :class="health.ssl_days < 10 ? 'text-red-500' : 'text-slate-900 dark:text-white'">{{ health.ssl_days }}</div>
+          <p class="text-[9px] font-bold text-slate-400 uppercase">{{ t('system.ssl_days') }}</p>
         </div>
 
-        <!-- FAIL2BAN / QUEUE -->
+        <!-- Средняя нагрузка -->
+        <div class="health-card">
+          <div class="flex justify-between mb-2">
+            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Средняя нагрузка</span>
+          </div>
+          <div class="text-2xl font-black mb-3 text-slate-900 dark:text-white">{{ health.load }}</div>
+          <p class="text-[9px] font-bold text-slate-400 uppercase">Нагрузка на CPU (1 мин)</p>
+        </div>
+
+        <!-- Защита Fail2Ban -->
         <div class="health-card cursor-pointer hover:border-amber-500/50 group/f2b" @click="fetchBannedIPs">
           <div class="flex justify-between mb-2">
-            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest group-hover/f2b:text-amber-500 transition-colors">Security / Queue</span>
+            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest group-hover/f2b:text-amber-500 transition-colors">Защита Fail2Ban</span>
             <svg class="w-3 h-3 text-slate-300 group-hover/f2b:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7" /></svg>
           </div>
-          <div class="flex items-center gap-4">
-             <div class="flex flex-col">
-              <div class="text-2xl font-black" :class="health.f2b_count > 0 ? 'text-amber-500' : ''">{{ health.f2b_count }}</div>
-              <p class="text-[9px] font-bold text-slate-400 uppercase">Banned</p>
-            </div>
-            <div class="w-px h-8 bg-slate-100 dark:bg-slate-800"></div>
-            <div class="flex flex-col">
-              <div class="text-2xl font-black" :class="health.queue > 50 ? 'text-red-500' : ''">{{ health.queue }}</div>
-              <p class="text-[9px] font-bold text-slate-400 uppercase">Queue</p>
-            </div>
+          <div class="text-2xl font-black mb-3" :class="health.f2b_count > 0 ? 'text-amber-500' : 'text-slate-900 dark:text-white'">{{ health.f2b_count }}</div>
+          <p class="text-[9px] font-bold text-slate-400 uppercase">Забанено IP</p>
+        </div>
+
+        <!-- Очередь писем -->
+        <div class="health-card">
+          <div class="flex justify-between mb-2">
+            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Очередь писем</span>
           </div>
+          <div class="text-2xl font-black mb-3 text-slate-900 dark:text-white">{{ health.queue }}</div>
+          <p class="text-[9px] font-bold text-slate-400 uppercase">Писем в очереди Postfix</p>
+        </div>
+
+        <!-- IMAP Сессии -->
+        <div class="health-card">
+          <div class="flex justify-between mb-2">
+            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">IMAP Сессии</span>
+          </div>
+          <div class="text-2xl font-black mb-3 text-slate-900 dark:text-white">{{ health.imap_sessions }}</div>
+          <p class="text-[9px] font-bold text-slate-400 uppercase">Активные подключения</p>
+        </div>
+
+        <!-- БД & Redis -->
+        <div class="health-card">
+          <div class="flex justify-between mb-2">
+            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">БД & Redis</span>
+          </div>
+          <div class="flex items-baseline gap-2 mb-3">
+            <span class="text-2xl font-black text-slate-900 dark:text-white">{{ health.db_threads }}</span>
+            <span class="text-[10px] text-slate-400 font-bold uppercase">SQL</span>
+            <span class="text-slate-300 dark:text-slate-700 mx-1">|</span>
+            <span class="text-2xl font-black text-slate-900 dark:text-white">{{ health.redis_memory }}</span>
+            <span class="text-[10px] text-slate-400 font-bold uppercase">RDS</span>
+          </div>
+          <p class="text-[9px] font-bold text-slate-400 uppercase">Потоки БД и память Redis</p>
         </div>
       </div>
 

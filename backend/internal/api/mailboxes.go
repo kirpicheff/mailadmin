@@ -89,13 +89,13 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 	// Создание ящика
 	mailboxes.POST("", func(c echo.Context) error {
 		type CreateRequest struct {
-			Username    string `json:"username" validate:"required,email"`
-			Password    string `json:"password" validate:"required,min=8"`
-			Name        string `json:"name"`
-			Quota       int64  `json:"quota" validate:"min=0"`
-			Active      bool   `json:"active"`
-			Phone       string `json:"phone"`
-			EmailOther  string `json:"email_other" validate:"omitempty,email"`
+			Username   string `json:"username" validate:"required,email"`
+			Password   string `json:"password" validate:"required,min=8"`
+			Name       string `json:"name"`
+			Quota      int64  `json:"quota" validate:"min=0"`
+			Active     bool   `json:"active"`
+			Phone      string `json:"phone"`
+			EmailOther string `json:"email_other" validate:"omitempty,email"`
 		}
 		var req CreateRequest
 		if err := c.Bind(&req); err != nil {
@@ -105,7 +105,7 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 			return err
 		}
 
-		// Валидация username (должен быть email) - мы уже проверили тегом email, 
+		// Валидация username (должен быть email) - мы уже проверили тегом email,
 		// но нам нужны части для maildir
 		parts := strings.Split(req.Username, "@")
 		localPart := parts[0]

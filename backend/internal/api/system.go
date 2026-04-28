@@ -342,22 +342,26 @@ func getSystemStats() SystemStats {
 		}
 	}
 
-	// 2. Disk (df /data)
-	// Пытаемся /data, если нет - корень
+	// 2. Disk (df -h -P)
 	diskPath := "/data"
 	if _, err := os.Stat(diskPath); os.IsNotExist(err) {
 		diskPath = "/"
 	}
-	diskOut := runCmd("df", "-h", diskPath)
+	diskOut := runCmdWithStdout("df", "-h", "-P", diskPath)
 	if diskOut != "" {
 		lines := strings.Split(diskOut, "\n")
-		if len(lines) > 1 {
-			fields := strings.Fields(lines[1])
-			if len(fields) > 4 {
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if line == "" || strings.HasPrefix(line, "Filesystem") {
+				continue
+			}
+			fields := strings.Fields(line)
+			if len(fields) >= 5 {
 				s.DiskTotal = fields[1]
 				s.DiskUsed = fields[2]
 				percStr := strings.TrimSuffix(fields[4], "%")
 				s.DiskPerc, _ = strconv.Atoi(percStr)
+				break
 			}
 		}
 	}
