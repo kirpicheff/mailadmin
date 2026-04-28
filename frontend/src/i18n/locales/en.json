@@ -109,6 +109,7 @@
   },
   "mailboxes": {
     "title": "Mailboxes & Aliases",
+    "subtitle": "Manage email accounts and message processing rules",
     "select_domain": "Select Domain",
     "select_prompt": "Choose a domain...",
     "search_placeholder": "Search by address or name...",
@@ -124,7 +125,9 @@
       "create_box": "Create Mailbox",
       "create_alias": "Create Alias",
       "mass_create": "Mass Create",
-      "download_csv": "Download CSV"
+      "download_csv": "Download CSV",
+      "sieve_filters": "Sieve Filters",
+      "global_filters": "Global Filters"
     },
     "batch": {
       "selected": "Selected",
@@ -167,6 +170,12 @@
       "section": "This section is empty"
     },
     "delete_confirm": "Delete {address}?",
+    "indicator_tooltips": {
+      "disabled": "Possible DELIVERY FAILURE (disabled)",
+      "mailbox": "POP/IMAP (local delivery)",
+      "domain_alias": "Delivered for {target}",
+      "alias": "Forwarding / Alias"
+    },
     "errors": {
       "status_change": "Error changing status",
       "delete": "Error deleting"
@@ -412,6 +421,46 @@
         "listed": "Listed in blacklist!",
         "server": "Check server"
       }
+    }
+  },
+  "folders": {
+    "inbox": "Inbox",
+    "sent": "Sent",
+    "junk": "Spam",
+    "trash": "Trash",
+    "drafts": "Drafts",
+    "archive": "Archive",
+    "custom": "Custom folder..."
+  },
+  "sieve": {
+    "title": "Filter Builder (Sieve)",
+    "match_all": "All of the following match",
+    "match_any": "Any of the following match",
+    "add_condition": "Add condition",
+    "add_action": "Add action",
+    "add_filter": "Create new filter",
+    "fields": {
+      "subject": "Subject",
+      "from": "Sender (From)",
+      "to": "Recipient (To)",
+      "spam": "Spam Flag (Rspamd)",
+      "body": "Message Text"
+    },
+    "operators": {
+      "contains": "Contains",
+      "not_contains": "Does not contain",
+      "is": "Is",
+      "not_is": "Is not",
+      "matches": "Wildcard match (*?)",
+      "regex": "Regex"
+    },
+    "actions": {
+      "fileinto": "Move to folder",
+      "redirect": "Forward to address",
+      "discard": "Discard message",
+      "reject": "Reject with message",
+      "vacation": "Autoresponder",
+      "mark_read": "Mark as read"
     }
   }
 }

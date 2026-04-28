@@ -109,6 +109,7 @@
   },
   "mailboxes": {
     "title": "Почтовые ящики и алиасы",
+    "subtitle": "Управление аккаунтами и правилами обработки почты",
     "select_domain": "Выбор домена",
     "select_prompt": "Выберите домен...",
     "search_placeholder": "Поиск по адресу или имени...",
@@ -124,7 +125,9 @@
       "create_box": "Создать ящик",
       "create_alias": "Создать алиас",
       "mass_create": "Массовое создание",
-      "download_csv": "Скачать CSV"
+      "download_csv": "Скачать CSV",
+      "sieve_filters": "Фильтры Sieve",
+      "global_filters": "Глобальные фильтры"
     },
     "batch": {
       "selected": "Выбрано",
@@ -167,6 +170,12 @@
       "section": "В этом разделе пока пусто"
     },
     "delete_confirm": "Удалить {address}?",
+    "indicator_tooltips": {
+      "disabled": "Возможно НЕ ДОСТАВЛЕНО (отключено)",
+      "mailbox": "POP/IMAP (локальная доставка)",
+      "domain_alias": "Доставляется для {target}",
+      "alias": "Пересылка / Алиас"
+    },
     "errors": {
       "status_change": "Ошибка при смене статуса",
       "delete": "Ошибка при удалении"
@@ -415,6 +424,46 @@
       "clean": "Чисто",
       "listed": "В черном списке!",
       "server": "Сервер проверки"
+    }
+  },
+  "folders": {
+    "inbox": "Входящие",
+    "sent": "Отправленные",
+    "junk": "Спам",
+    "trash": "Корзина",
+    "drafts": "Черновики",
+    "archive": "Архив",
+    "custom": "Другая папка..."
+  },
+  "sieve": {
+    "title": "Конструктор фильтров (Sieve)",
+    "match_all": "Совпадают ВСЕ",
+    "match_any": "Совпадает ЛЮБОЕ",
+    "add_condition": "Добавить условие",
+    "add_action": "Добавить действие",
+    "add_filter": "Создать новый фильтр",
+    "fields": {
+      "subject": "Тема письма",
+      "from": "Отправитель",
+      "to": "Получатель (To)",
+      "spam": "Spam Flag (Rspamd)",
+      "body": "Текст письма"
+    },
+    "operators": {
+      "contains": "Содержит",
+      "not_contains": "Не содержит",
+      "is": "Совпадает с",
+      "not_is": "Не совпадает с",
+      "matches": "Маска (*?)",
+      "regex": "Regex"
+    },
+    "actions": {
+      "fileinto": "Переместить в папку",
+      "redirect": "Переслать на адрес",
+      "discard": "Уничтожить",
+      "reject": "Отклонить с уведомлением",
+      "vacation": "Автоответчик",
+      "mark_read": "Отметить как прочитанное"
     }
   }
 }

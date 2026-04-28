@@ -106,6 +106,10 @@ func main() {
 	diagGroup := apiGroup.Group("/diagnostics")
 	api.RegisterDiagnosticsHandlers(diagGroup, cfg.JWTSecret)
 
+	// Управление Sieve-фильтрами
+	sieveGroup := apiGroup.Group("/sieve")
+	api.RegisterSieveHandlers(sieveGroup, cfg.JWTSecret, cfg)
+
 	// Запуск сервера
 	e.Logger.Fatal(e.Start(cfg.ListenAddr))
 }

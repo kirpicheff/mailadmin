@@ -13,15 +13,19 @@ type Config struct {
 	JWTSecret   string
 	ListenAddr  string
 	CORSOrigins []string
+	MailRoot    string
+	SieveRoot   string
+	LogPath     string
 }
 
 func LoadConfig() *Config {
-	// Загружаем .env файл если он есть
+	// ... (loading .env)
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found, relying on system environment variables")
 	}
 
 	dsn := os.Getenv("DB_DSN")
+	// ... (dsn logic)
 	if dsn == "" {
 		dsn = "user:password@tcp(127.0.0.1:3306)/mailadmin?charset=utf8mb4&parseTime=True&loc=Local"
 	}
@@ -36,7 +40,21 @@ func LoadConfig() *Config {
 		addr = ":8080"
 	}
 
-	// Читаем CORS_ORIGIN и разбиваем его по запятой
+	// Получаем пути к почте и sieve
+	mailRoot := os.Getenv("MAIL_ROOT")
+	if mailRoot == "" {
+		mailRoot = "/data/mail"
+	}
+	sieveRoot := os.Getenv("SIEVE_ROOT")
+	if sieveRoot == "" {
+		sieveRoot = "/data/sieve"
+	}
+	logPath := os.Getenv("LOG_PATH")
+	if logPath == "" {
+		logPath = "/var/log/mail.log"
+	}
+
+	// ... (cors logic)
 	corsRaw := os.Getenv("CORS_ORIGIN")
 	var origins []string
 	if corsRaw != "" {
@@ -72,6 +90,9 @@ func LoadConfig() *Config {
 		JWTSecret:   secret,
 		ListenAddr:  addr,
 		CORSOrigins: origins,
+		MailRoot:    mailRoot,
+		SieveRoot:   sieveRoot,
+		LogPath:     logPath,
 	}
 }
 

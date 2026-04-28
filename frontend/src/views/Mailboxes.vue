@@ -1,5 +1,18 @@
 <template>
   <div class="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+    <!-- Page Header -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 px-2">
+      <div>
+        <h1 class="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">{{ t('mailboxes.title') }}</h1>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">{{ t('mailboxes.subtitle') }}</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <button v-if="isSuperAdmin" @click="openSieveModal('GLOBAL')" class="px-5 py-2.5 bg-teal-600 text-white rounded-xl font-bold hover:bg-teal-700 shadow-lg shadow-teal-500/20 transition-all active:scale-95 text-sm flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+          {{ t('mailboxes.actions.global_filters') }}
+        </button>
+      </div>
+    </div>
     <!-- Header: Selector & Global Search -->
     <div class="glass-panel p-6 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-xl flex flex-col md:flex-row items-center gap-6">
       <div class="w-full md:w-1/3 relative">
@@ -115,7 +128,7 @@
                     <div 
                       :class="getIndicatorColor(item)" 
                       class="w-1.5 h-8 rounded-full shadow-sm bg-gradient-to-b transition-all duration-500"
-                      :title="!item.active ? 'Возможно НЕ ДОСТАВЛЕНО (отключено)' : (item.type === 'mailbox' ? 'POP/IMAP (локальная доставка)' : (item.type === 'domain_alias' ? 'Доставляется для ' + item.goto : 'Пересылка / Алиас'))"
+                      :title="!item.active ? t('mailboxes.indicator_tooltips.disabled') : (item.type === 'mailbox' ? t('mailboxes.indicator_tooltips.mailbox') : (item.type === 'domain_alias' ? t('mailboxes.indicator_tooltips.domain_alias', { target: item.goto }) : t('mailboxes.indicator_tooltips.alias')))"
                     ></div>
                     <div class="flex flex-col">
                       <span class="text-sm font-bold text-slate-900 dark:text-white tracking-tight break-all">{{ item.address }}</span>
@@ -174,6 +187,9 @@
               </td>
               <td class="px-8 py-5">
                 <div class="flex items-center gap-2 justify-center">
+                  <button v-if="item.type === 'mailbox'" @click="openSieveModal(item.address)" class="p-2 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-indigo-500 hover:bg-white dark:hover:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-700 transition-all shadow-sm" :title="t('mailboxes.actions.sieve_filters')">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                  </button>
                   <button @click="editItem(item)" class="p-2 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-mail-blue-500 hover:bg-white dark:hover:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-700 transition-all shadow-sm">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                   </button>
@@ -251,6 +267,7 @@
     <MailboxForm v-if="showMailboxModal" :domain="selectedDomain" :item="editingItem" @close="showMailboxModal = false" @save="onSaved" />
     <AliasForm v-if="showAliasModal" :domain="selectedDomain" :item="editingItem" @close="showAliasModal = false" @save="onSaved" />
     <MassCreateModal v-if="showMassCreate" :domain="selectedDomain" @close="showMassCreate = false" @save="onSaved" />
+    <SieveFiltersModal :show="showSieveModal" :username="sieveTarget" @close="showSieveModal = false" />
   </div>
 </template>
 
@@ -260,9 +277,13 @@ import api from '@/api/axios'
 import MailboxForm from '@/components/MailboxForm.vue'
 import AliasForm from '@/components/AliasForm.vue'
 import MassCreateModal from '@/components/MassCreateModal.vue'
+import SieveFiltersModal from '@/components/SieveFiltersModal.vue'
 import { useI18n } from 'vue-i18n'
+import { useAuthStore } from '@/store/auth'
 
 const { t, locale } = useI18n()
+const authStore = useAuthStore()
+const isSuperAdmin = computed(() => authStore.isSuperAdmin)
 
 const domains = ref([])
 const selectedDomain = ref('')
@@ -289,7 +310,14 @@ const stats = reactive({
 const showMailboxModal = ref(false)
 const showAliasModal = ref(false)
 const showMassCreate = ref(false)
+const showSieveModal = ref(false)
+const sieveTarget = ref('')
 const editingItem = ref(null)
+
+const openSieveModal = (target) => {
+  sieveTarget.value = target
+  showSieveModal.value = true
+}
 
 const selectedItems = ref(new Set())
 const isAllSelected = computed(() => {

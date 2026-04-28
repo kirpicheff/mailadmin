@@ -150,3 +150,15 @@ type VacationNotification struct {
 }
 
 func (VacationNotification) TableName() string { return "vacation_notification" }
+
+// SieveRule представляет таблицу ma_sieve_rules для хранения фильтров почты
+type SieveRule struct {
+	ID        uint      `gorm:"primaryKey;autoIncrement;column:id" json:"id"`
+	Username  string    `gorm:"column:username;size:255;index" json:"username"` // email ящика или "GLOBAL" для общих правил
+	RulesJSON string    `gorm:"column:rules_json;type:text" json:"rules_json"`  // Хранит структуру для визуального редактора
+	Content   string    `gorm:"column:content;type:text" json:"content"`       // Сгенерированный итоговый код Sieve
+	Active    bool      `gorm:"column:active;not null;default:1" json:"active"`
+	Modified  time.Time `gorm:"column:modified;not null;default:CURRENT_TIMESTAMP;autoUpdateTime" json:"modified"`
+}
+
+func (SieveRule) TableName() string { return "ma_sieve_rules" }
