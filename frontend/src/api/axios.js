@@ -39,7 +39,7 @@ instance.interceptors.response.use(
       } catch (refreshError) {
         // Если обновление не удалось - разлогиниваем
         localStorage.removeItem('accessToken')
-        window.location.href = '/login'
+        window.location.hash = '/login'
         return Promise.reject(refreshError)
       }
     }
