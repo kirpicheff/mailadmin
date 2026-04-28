@@ -196,21 +196,7 @@
     "quota_label": "Quota (MB)",
     "quota_hint": "0 = Use domain settings",
     "status_label": "Access Allowed",
-    "status_hint": "Enable/disable account",
-    "vacation": {
-      "tab": "Vacation",
-      "status": "I'm on vacation (enable)",
-      "subject": "Reply Subject",
-      "body": "Message Text",
-      "dates": "Active Period",
-      "from": "From",
-      "until": "Until",
-      "interval": "Interval",
-      "interval_hint": "Interval between replies to same sender (seconds). 0 = default (24h).",
-      "not_set": "Vacation mode not configured",
-      "default_subject": "I am out of office",
-      "default_body": "Hello!\n\nThank you for your email. I am currently away on vacation and will respond as soon as I return."
-    }
+    "status_hint": "Enable/disable account"
   },
   "alias_form": {
     "title_edit": "Alias Settings",

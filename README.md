@@ -38,17 +38,20 @@ The system implements strict access control using role segregation. There are tw
 - View current summary statistics (number of mailboxes, aliases, quotas) using optimized SQL queries (JOINs).
 - Manage limits (mailbox count and total quota volume).
 - Automatic validation and real-time checking of domain MX record statuses.
-- Soft management (Active/Inactive) and cascading deletion (deleting a domain carefully deletes all its aliases, mailboxes, and auto-reply settings).
+- Soft management (Active/Inactive) and cascading deletion (deleting a domain carefully deletes all its aliases, mailboxes, and Sieve filters).
+- **DNS Diagnostics & Generator:** Comprehensive domain audits (SPF, DKIM, DMARC, MX, SSL, RBL) with one-click DNS record generation and recommendations.
 
 ### 2. Mailboxes & Aliases
 - Full CRUD for mailboxes with individual quota limit management.
-- Vacation (Auto-reply) settings: setting subject, body, and activation schedule.
+- **Sieve Filter Builder:** A powerful visual constructor for message processing rules (Move to folder, Forward, Discard, Reject, Mark as Read).
+- **Advanced Vacation:** Set up modern auto-replies via Sieve with custom subjects, multi-line messages, and interval control.
 - Generation of cryptographically secure passwords, support for mandatory password expiration (`password_expiry`).
 - Alias management (forwarding emails from one address to a group of addresses). Automatic creation of Postmaster aliases when new domains are added.
 
-### 3. Admin Tools
+### 3. Admin & Monitoring Tools
+- **System Health Dashboard:** Real-time monitoring of CPU, RAM, Disk, SSL certificate validity, and system service statuses (Fail2Ban, IMAP connections, etc.).
 - Tool for sending verification (test) emails on behalf of an administrator.
-- Broadcast mailing tool to send notifications to all users in a domain or group of domains (processed asynchronously to prevent timeouts).
+- Broadcast mailing tool to send notifications to all users in a domain or group of domains.
 
 ### 4. Audit Logs
 - Logging of every critical action to the backend database.
@@ -61,7 +64,7 @@ The system implements strict access control using role segregation. There are tw
 
 The project was designed with a strong focus on preventing popular web vulnerabilities. Key protection mechanisms:
 - **API Authentication:** Almost all endpoints (except login initialization) are protected by `auth.JWTMiddleware`, preventing unauthorized access (protection against unauthorized use or application crashes due to Nil Pointers).
-- **IDOR Protection:** Every `POST`, `PUT`, or `DELETE` request for a mailbox, auto-reply, alias, or mailing tool strictly verifies ownership of the target domain via the `domain_admins` database.
+- **IDOR Protection:** Every `POST`, `PUT`, or `DELETE` request for a mailbox, alias, Sieve filter, or mailing tool strictly verifies ownership of the target domain via the `domain_admins` database.
 
 ---
 
@@ -94,6 +97,9 @@ Key variables:
 - `JWT_SECRET`: A secure key for signing tokens (minimum 32 characters recommended).
 - `LISTEN_ADDR`: The address and port for the Go server (e.g., `:8080`).
 - `CORS_ORIGIN`: The URL of your frontend (required for cross-origin requests).
+- `MAIL_ROOT`: Base directory for mailbox data (e.g., `/data/mail`).
+- `SIEVE_ROOT`: Directory for storing Sieve scripts.
+- `LOG_PATH`: Path to the main mail system log for real-time monitoring (e.g., `/var/log/mail.log`).
 
 ### Running the Backend
 The backend uses configuration, usually from environment files (ENV) or the `internal/config` setup.
@@ -163,18 +169,21 @@ For production use, it is recommended to compile the frontend (`npm run build`) 
 ### 1. Управление доменами
 - Просмотр актуальной сводной статистики (количество почтовых ящиков, алиасов, квоты) с помощью оптимизированных SQL-запросов (JOIN).
 - Управление лимитами (на количество ящиков и объем квоты).
+- **Диагностика и генератор DNS:** Полный аудит домена (SPF, DKIM, DMARC, MX, SSL, RBL) и автоматическая генерация правильных DNS-записей.
 - Автоматическая валидация и проверка статуса MX-записей домена в реальном времени.
-- Мягкое управление (Active/Inactive) и каскадное удаление (удаление домена влечет бережное удаление всех его алиасов, ящиков и настроек автоответчиков).
+- Мягкое управление (Active/Inactive) и каскадное удаление (удаление домена влечет бережное удаление всех его алиасов, ящиков и фильтров Sieve).
 
 ### 2. Почтовые ящики и алиасы
 - Полноценный CRUD для почтовых ящиков с возможностью управления лимитами индивидуальной квоты.
-- Настройки автоответчика (Vacation): установка темы, текста и расписания активации.
+- **Конструктор фильтров Sieve:** Мощный визуальный конструктор правил обработки почты (Перемещение в папку, Пересылка, Удаление, Отклонение, Пометка прочитанным).
+- **Продвинутый Автоответчик:** Настройка современных автоответов через Sieve с поддержкой многострочного текста, интервалов и условий.
 - Генерация криптографически безопасных паролей, поддержка принудительного устаревания пароля (`password_expiry`).
 - Управление алиасами (направление писем с одного адреса на группу адресов). Автосоздание Postmaster-алиасов при добавлении новых доменов.
 
-### 3. Инструменты (Admin Tools)
+### 3. Инструменты и Мониторинг
+- **Дашборд здоровья системы:** Мониторинг RAM, Диска, статуса SSL-сертификатов, активности Fail2Ban и сессий IMAP в реальном времени.
 - Инструмент отправки поверочных (тестовых) писем от имени администратора.
-- Инструмент широковещательной рассылки (Broadcast) оповещений всем пользователям в домене или группе доменов (обрабатывается асинхронно для защиты от таймаута).
+- Инструмент широковещательной рассылки (Broadcast) оповещений всем пользователям в домене или группе доменов.
 
 ### 4. Журнал аудита (Audit Logs)
 - Запись каждого критического действия в бэкенд-базу.
@@ -187,7 +196,7 @@ For production use, it is recommended to compile the frontend (`npm run build`) 
 
 Проект спроектирован с упором на предотвращение популярных веб-уязвимостей. Основные механизмы защиты:
 - **Аутентификация API:** Почти все конечные точки (кроме инициализации логина) закрыты `auth.JWTMiddleware`, предотвращая несанкционированный доступ (защита от неавторизованного использования или падения приложения по причине Nil Pointer-ов).
-- **IDOR Protection:** Каждый запрос `POST`, `PUT` или `DELETE` на запись почтового ящика, автоответчика, алиаса или инструмента рассылки строго проверяет владение целевым доменом через базу `domain_admins`.
+- **IDOR Protection:** Каждый запрос `POST`, `PUT` или `DELETE` на запись почтового ящика, алиаса, фильтра Sieve или инструмента рассылки строго проверяет владение целевым доменом через базу `domain_admins`.
 
 ---
 
@@ -220,6 +229,9 @@ cp .env.example .env
 - `JWT_SECRET`: Секретный ключ для подписи токенов (рекомендуется минимум 32 символа).
 - `LISTEN_ADDR`: Адрес и порт для запуска Go-сервера (например, `:8080`).
 - `CORS_ORIGIN`: URL вашего фронтенда (необходим для разрешения кросс-доменных запросов).
+- `MAIL_ROOT`: Корневая директория для данных почтовых ящиков (например, `/data/mail`).
+- `SIEVE_ROOT`: Путь к директории со скриптами Sieve.
+- `LOG_PATH`: Путь к основному логу почтовой системы для мониторинга (например, `/var/log/mail.log`).
 
 ### Запуск Backend-части
 Бэкенд использует конфигурацию, как правило, из файлов среды (ENV) или конфига конфигуратора `internal/config`.

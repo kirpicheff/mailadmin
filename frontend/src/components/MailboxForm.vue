@@ -19,28 +19,10 @@
         </button>
       </div>
 
-      <!-- Tabs -->
-      <div v-if="isEdit" class="flex border-b border-slate-100 dark:border-slate-800 px-8 bg-slate-50/20 flex-shrink-0">
-        <button 
-          @click="activeTab = 'general'" 
-          :class="activeTab === 'general' ? 'border-mail-blue-600 text-mail-blue-600' : 'border-transparent text-slate-400'"
-          class="px-4 py-4 text-xs font-black uppercase tracking-widest border-b-2 transition-all"
-        >
-          {{ t('common.settings') }}
-        </button>
-        <button 
-          @click="activeTab = 'vacation'" 
-          :class="activeTab === 'vacation' ? 'border-mail-blue-600 text-mail-blue-600' : 'border-transparent text-slate-400'"
-          class="px-4 py-4 text-xs font-black uppercase tracking-widest border-b-2 transition-all"
-        >
-          {{ t('mailbox_form.vacation.tab') }}
-        </button>
-      </div>
-
       <!-- Content -->
       <div class="overflow-y-auto flex-1 p-8">
         <form @submit.prevent="save" class="space-y-6">
-          <div v-if="activeTab === 'general'" class="space-y-6">
+          <div class="space-y-6">
             <!-- Адрес -->
             <div class="relative">
               <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 ml-1">{{ t('mailbox_form.address_label') }}</label>
@@ -109,55 +91,6 @@
             </div>
           </div>
 
-          <!-- Vacation Tab -->
-          <div v-else-if="activeTab === 'vacation'" class="space-y-6 animate-in fade-in duration-300">
-            <!-- Vacation Status -->
-            <div class="flex items-center justify-between bg-mail-blue-50/30 dark:bg-mail-blue-900/10 p-4 rounded-2xl border border-mail-blue-100 dark:border-mail-blue-800/50">
-              <div class="flex flex-col">
-                <span class="text-sm font-bold text-slate-700 dark:text-white">{{ t('mailbox_form.vacation.status') }}</span>
-              </div>
-              <button type="button" @click="vacation.active = !vacation.active" :class="vacation.active ? 'bg-mail-blue-500' : 'bg-slate-300 dark:bg-slate-700'" class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors active:scale-95">
-                <span :class="vacation.active ? 'translate-x-6' : 'translate-x-1'" class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform" />
-              </button>
-            </div>
-
-            <!-- Subject -->
-            <div class="relative">
-              <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 ml-1">{{ t('mailbox_form.vacation.subject') }}</label>
-              <input v-model="vacation.subject" type="text" 
-                class="w-full px-5 py-3.5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 text-slate-900 dark:text-white focus:border-mail-blue-500 transition-all outline-none font-bold" />
-            </div>
-
-            <!-- Body -->
-            <div class="relative">
-              <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 ml-1">{{ t('mailbox_form.vacation.body') }}</label>
-              <textarea v-model="vacation.body" rows="4"
-                class="w-full px-5 py-3.5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 text-slate-900 dark:text-white focus:border-mail-blue-500 transition-all outline-none font-bold resize-none"></textarea>
-            </div>
-
-            <!-- Dates -->
-            <div class="grid grid-cols-2 gap-5">
-              <div class="relative">
-                <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 ml-1">{{ t('mailbox_form.vacation.from') }}</label>
-                <input v-model="vacationFrom" type="date"
-                  class="w-full px-5 py-3.5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 text-slate-900 dark:text-white focus:border-mail-blue-500 transition-all outline-none font-bold" />
-              </div>
-              <div class="relative">
-                <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 ml-1">{{ t('mailbox_form.vacation.until') }}</label>
-                <input v-model="vacationUntil" type="date"
-                  class="w-full px-5 py-3.5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 text-slate-900 dark:text-white focus:border-mail-blue-500 transition-all outline-none font-bold" />
-              </div>
-            </div>
-            
-            <!-- Interval -->
-            <div class="relative">
-              <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 ml-1">{{ t('mailbox_form.vacation.interval') }}</label>
-              <input v-model.number="vacation.interval_time" type="number" 
-                class="w-full px-5 py-3.5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 text-slate-900 dark:text-white focus:border-mail-blue-500 outline-none font-bold" />
-              <p class="text-[9px] text-slate-400 mt-1.5 ml-1 uppercase font-bold tracking-tighter opacity-70 italic">{{ t('mailbox_form.vacation.interval_hint') }}</p>
-            </div>
-          </div>
-
           <!-- Buttons -->
           <div class="flex gap-4 pt-4 sticky bottom-0 bg-white dark:bg-slate-900 pb-2">
             <button type="submit" :disabled="loading" class="flex-1 py-4 bg-mail-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-mail-blue-700 shadow-xl shadow-mail-blue-500/30 transition-all active:scale-95 disabled:opacity-50">
@@ -188,7 +121,6 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'save'])
 
-const activeTab = ref('general')
 const isEdit = computed(() => !!props.item)
 const localPart = ref('')
 const targetDomain = ref('')
@@ -205,24 +137,6 @@ const form = reactive({
   active: true
 })
 
-const vacation = reactive({
-  active: false,
-  subject: '',
-  body: '',
-  activefrom: '',
-  activeuntil: '',
-  interval_time: 86400 // 24 hours
-})
-
-// Хелперы для дат (input type="date" требует YYYY-MM-DD)
-const vacationFrom = ref('')
-const vacationUntil = ref('')
-
-const initVacationDefaults = () => {
-  if (!vacation.subject) vacation.subject = t('mailbox_form.vacation.default_subject')
-  if (!vacation.body) vacation.body = t('mailbox_form.vacation.default_body')
-}
-
 onMounted(async () => {
   // Загружаем список доменов для выбора
   try {
@@ -237,43 +151,10 @@ onMounted(async () => {
     localPart.value = parts[0]
     targetDomain.value = parts[1]
     quotaMb.value = props.item.quota / (1024 * 1024)
-    
-    // Загружаем настройки автоответчика
-    await fetchVacation()
   } else {
     targetDomain.value = props.domain || (domains.value.length > 0 ? domains.value[0].domain : '')
-    // Для нового ящика сразу ставим дефолты
-    initVacationDefaults()
   }
 })
-
-const fetchVacation = async () => {
-  try {
-    const { data } = await api.get(`/mailboxes/${props.item.username}/vacation`)
-    Object.assign(vacation, data)
-    
-    // Если в БД нет текста (новый), ставим дефолт
-    initVacationDefaults()
-    
-    // Форматируем даты для инпутов (предотвращаем 01.01.0001)
-    if (data.activefrom && !data.activefrom.startsWith('0001')) {
-      vacationFrom.value = data.activefrom.split('T')[0]
-    } else {
-      vacationFrom.value = new Date().toISOString().split('T')[0]
-    }
-    
-    if (data.activeuntil && !data.activeuntil.startsWith('0001')) {
-      vacationUntil.value = data.activeuntil.split('T')[0]
-    } else {
-      const later = new Date()
-      later.setDate(later.getDate() + 7)
-      vacationUntil.value = later.toISOString().split('T')[0]
-    }
-  } catch (e) {
-    console.error('Failed to fetch vacation:', e)
-    initVacationDefaults()
-  }
-}
 
 const generatePassword = () => {
   const charset = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz34679#$@!%&*"
@@ -292,7 +173,6 @@ const save = async () => {
     form.username = `${localPart.value}@${targetDomain.value}`
     form.quota = quotaMb.value * 1024 * 1024
 
-    // 1. Сохраняем основные данные ящика
     if (isEdit.value) {
       await api.put(`/mailboxes/${form.username}`, {
         password: form.password,
@@ -302,15 +182,6 @@ const save = async () => {
       })
     } else {
       await api.post('/mailboxes', form)
-    }
-
-    // 2. Если в режиме редактирования - сохраняем и Vacation
-    if (isEdit.value) {
-      const vData = { ...vacation }
-      vData.activefrom = vacationFrom.value ? new Date(vacationFrom.value).toISOString() : undefined
-      vData.activeuntil = vacationUntil.value ? new Date(vacationUntil.value).toISOString() : undefined
-      
-      await api.put(`/mailboxes/${form.username}/vacation`, vData)
     }
 
     emit('save')
