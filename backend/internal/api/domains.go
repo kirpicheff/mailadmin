@@ -1,7 +1,12 @@
 package api
 
 import (
+	"fmt"
+	"io"
+	"net"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -219,4 +224,87 @@ func RegisterDomainHandlers(g *echo.Group, secret string) {
 
 		return c.JSON(http.StatusNoContent, nil)
 	})
+
+	// Генератор DNS записей
+	g.GET("/:id/dns", func(c echo.Context) error {
+		id := c.Param("id")
+		claims := c.Get("user").(*auth.Claims)
+
+		// Проверка доступа
+		if !hasDomainAccess(claims, id) {
+			return c.JSON(http.StatusForbidden, map[string]string{"error": "access denied"})
+		}
+
+		// Логика генерации записей
+		// 1. Попытка получить DKIM ключ
+		dkimKey := ""
+		// Расширенный список путей для поиска ключей
+		paths := []string{
+			"/etc/opendkim/keys/" + id + "/default.txt",
+			"/etc/opendkim/keys/" + id + "/mail.txt",
+			"/data/dkim/" + id + ".txt",
+			"/etc/opendkim/" + id + ".txt",
+			"/etc/dkim/" + id + ".txt",
+		}
+		for _, p := range paths {
+			content, err := os.ReadFile(p)
+			if err == nil {
+				s := string(content)
+				// Извлекаем часть v=DKIM1...
+				start := strings.Index(s, "v=DKIM1")
+				if start != -1 {
+					dkimKey = strings.TrimSpace(s[start:])
+					// Очистка от мусора
+					dkimKey = strings.ReplaceAll(dkimKey, "\"", "")
+					dkimKey = strings.ReplaceAll(dkimKey, "\t", "")
+					dkimKey = strings.ReplaceAll(dkimKey, "\n", "")
+					dkimKey = strings.ReplaceAll(dkimKey, " ", "")
+					dkimKey = strings.ReplaceAll(dkimKey, ";", "; ")
+					// Убираем закрывающую скобку, если она есть (часто бывает в конце файлов)
+					dkimKey = strings.TrimSuffix(dkimKey, ")")
+					dkimKey = strings.TrimSpace(dkimKey)
+					break
+				}
+			}
+		}
+
+		// 2. Улучшение SPF (используем реальный IP сервера)
+		serverIP := getOutboundIP()
+		spf := "v=spf1 mx a -all"
+		if serverIP != "" {
+			spf = fmt.Sprintf("v=spf1 ip4:%s mx a -all", serverIP)
+		}
+
+		return c.JSON(http.StatusOK, map[string]string{
+			"domain": id,
+			"spf":    spf,
+			"dkim":   dkimKey,
+			"dmarc":  "v=DMARC1; p=quarantine; rua=mailto:postmaster@" + id,
+		})
+	})
+}
+
+func getOutboundIP() string {
+	// 1. Пытаемся получить внешний IP через внешний сервис (на случай NAT)
+	client := http.Client{
+		Timeout: 2 * time.Second,
+	}
+	resp, err := client.Get("http://api.ipify.org")
+	if err == nil {
+		defer resp.Body.Close()
+		body, _ := io.ReadAll(resp.Body)
+		ip := strings.TrimSpace(string(body))
+		if net.ParseIP(ip) != nil {
+			return ip
+		}
+	}
+
+	// 2. Если сервис недоступен, берем локальный адрес исходящего интерфейса (fallback)
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		return ""
+	}
+	defer conn.Close()
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+	return localAddr.IP.String()
 }

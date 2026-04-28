@@ -9,6 +9,16 @@
     "settings": "Access Settings",
     "tools": "Tools"
   },
+  "dns": {
+    "title": "DNS Recommendations",
+    "spf": "SPF Record (TXT)",
+    "dkim": "DKIM Record (TXT)",
+    "dmarc": "DMARC Record (TXT)",
+    "host": "Host",
+    "dkim_not_found": "DKIM key not found on server",
+    "dkim_path": "Path",
+    "hint": "Propagating DNS changes can take up to 24 hours worldwide."
+  },
   "common": {
     "logout": "Logout",
     "theme": {
@@ -368,7 +378,8 @@
       "dns_records": "DNS Records",
       "ssl_status": "Security (SSL)",
       "rbl_status": "Blacklists (RBL)",
-      "mx": {
+    "rbl_status": "Blacklists (RBL)",
+    "mx": {
         "title": "MX Records",
         "hint": "Specifies where to deliver mail"
       },
