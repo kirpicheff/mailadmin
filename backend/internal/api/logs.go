@@ -20,8 +20,12 @@ func RegisterLogHandlers(g *echo.Group, secret string) {
 		limit, _ := strconv.Atoi(c.QueryParam("limit"))
 		domain := c.QueryParam("domain")
 
-		if page <= 0 { page = 1 }
-		if limit <= 0 { limit = 50 }
+		if page <= 0 {
+			page = 1
+		}
+		if limit <= 0 {
+			limit = 50
+		}
 		offset := (page - 1) * limit
 
 		claims := c.Get("user").(*auth.Claims)

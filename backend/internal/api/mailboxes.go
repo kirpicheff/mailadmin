@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/GehirnInc/crypt"
 	_ "github.com/GehirnInc/crypt/sha512_crypt"
 	"github.com/labstack/echo/v4"
 	"github.com/user/mailadmin/internal/audit"
@@ -65,7 +64,7 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 		}
 
 		var mailboxes []MailboxWithQuota
-		
+
 		// Используем алиасы m и q для ясности
 		err := dbQuery.
 			Select("mailbox.*, COALESCE(quota2.bytes, 0) as quota_used, COALESCE(quota2.messages, 0) as messages").
@@ -100,10 +99,28 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 		// Установка maildir: domain/user/
 		box.Maildir = fmt.Sprintf("%s/%s/", box.Domain, box.LocalPart)
 
+		claims := c.Get("user").(*auth.Claims)
+		if !hasDomainAccess(claims, box.Domain) {
+			return c.JSON(http.StatusForbidden, map[string]string{"error": "access denied to this domain"})
+		}
+
+		// Проверка лимита ящиков на домене
+		var domainRec models.Domain
+		if err := db.DB.Where("domain = ?", box.Domain).First(&domainRec).Error; err != nil {
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "domain not found"})
+		}
+
+		if domainRec.Mailboxes > 0 {
+			var count int64
+			db.DB.Model(&models.Mailbox{}).Where("domain = ?", box.Domain).Count(&count)
+			if count >= int64(domainRec.Mailboxes) {
+				return c.JSON(http.StatusForbidden, map[string]string{"error": "domain mailbox limit reached"})
+			}
+		}
+
 		// Хеширование пароля
 		if box.Password != "" {
-			cryptService := crypt.New(crypt.SHA512)
-			hash, err := cryptService.Generate([]byte(box.Password), []byte("$6$salt"))
+			hash, err := auth.GenerateHash(box.Password)
 			if err != nil {
 				return c.JSON(http.StatusInternalServerError, map[string]string{"error": "hashing failed"})
 			}
@@ -113,13 +130,32 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 		box.Created = time.Now()
 		box.Modified = time.Now()
 
-		if err := db.DB.Create(&box).Error; err != nil {
+		// Транзакция: создание ящика + алиаса
+		tx := db.DB.Begin()
+
+		if err := tx.Create(&box).Error; err != nil {
+			tx.Rollback()
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to create mailbox: " + err.Error()})
 		}
 
-		claims := c.Get("user").(*auth.Claims)
+		// Создаем зеркальный алиас (как делает PostfixAdmin)
+		alias := models.Alias{
+			Address:  box.Username,
+			Goto:     box.Username,
+			Domain:   box.Domain,
+			Created:  time.Now(),
+			Modified: time.Now(),
+			Active:   true,
+		}
 
-		audit.Log(db.DB, claims.Username, box.Domain, "create mailbox", box.Username)
+		if err := tx.Where("address = ?", box.Username).FirstOrCreate(&alias).Error; err != nil {
+			tx.Rollback()
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to create associated alias: " + err.Error()})
+		}
+
+		tx.Commit()
+
+		audit.Log(db.DB, claims.Username, box.Domain, "create mailbox + alias", box.Username)
 
 		return c.JSON(http.StatusCreated, box)
 	})
@@ -132,15 +168,19 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 			return c.JSON(http.StatusNotFound, map[string]string{"error": "mailbox not found"})
 		}
 
+		claims := c.Get("user").(*auth.Claims)
+		if !hasDomainAccess(claims, existing.Domain) {
+			return c.JSON(http.StatusForbidden, map[string]string{"error": "access denied to this domain"})
+		}
+
 		var update models.Mailbox
 		if err := c.Bind(&update); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
 		}
 
-		// Если пароль передан - хешируем
+		// Если пароль передан - хешируем безопасной случайной солью
 		if update.Password != "" && !strings.HasPrefix(update.Password, "$6$") {
-			cryptService := crypt.New(crypt.SHA512)
-			hash, err := cryptService.Generate([]byte(update.Password), []byte("$6$salt"))
+			hash, err := auth.GenerateHash(update.Password)
 			if err != nil {
 				return c.JSON(http.StatusInternalServerError, map[string]string{"error": "hashing failed"})
 			}
@@ -165,7 +205,6 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to update mailbox"})
 		}
 
-		claims := c.Get("user").(*auth.Claims)
 		audit.Log(db.DB, claims.Username, existing.Domain, "update mailbox", existing.Username)
 
 		return c.JSON(http.StatusOK, existing)
@@ -176,14 +215,37 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 		username := c.Param("username")
 		// Получаем домен для лога перед удалением
 		var box models.Mailbox
-		db.DB.Select("domain").Where("username = ?", username).First(&box)
-
-		if err := db.DB.Where("username = ?", username).Delete(&models.Mailbox{}).Error; err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to delete mailbox"})
+		if err := db.DB.Select("domain").Where("username = ?", username).First(&box).Error; err != nil {
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "mailbox not found"})
 		}
 
 		claims := c.Get("user").(*auth.Claims)
-		audit.Log(db.DB, claims.Username, box.Domain, "delete mailbox", username)
+		if !hasDomainAccess(claims, box.Domain) {
+			return c.JSON(http.StatusForbidden, map[string]string{"error": "access denied to this domain"})
+		}
+
+		tx := db.DB.Begin()
+
+		if err := tx.Where("username = ?", username).Delete(&models.Mailbox{}).Error; err != nil {
+			tx.Rollback()
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to delete mailbox"})
+		}
+
+		// Бережно удаляем и связанный алиас
+		if err := tx.Where("address = ?", username).Delete(&models.Alias{}).Error; err != nil {
+			tx.Rollback()
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to delete associated alias"})
+		}
+
+		// Удаляем автоответчик, если есть
+		if err := tx.Where("email = ?", username).Delete(&models.Vacation{}).Error; err != nil {
+			tx.Rollback()
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to delete associated vacation"})
+		}
+
+		tx.Commit()
+
+		audit.Log(db.DB, claims.Username, box.Domain, "delete mailbox + alias + vacation", username)
 
 		return c.NoContent(http.StatusNoContent)
 	})

@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"crypto/rand"
 	"fmt"
 	"strings"
 
@@ -35,6 +36,30 @@ func CheckPassword(password, hash string) (bool, error) {
 	}
 
 	return true, nil
+}
+
+// GenerateHash генерирует SHA512-Crypt хеш со случайной солью
+func GenerateHash(password string) (string, error) {
+	saltChars := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789./"
+	salt := make([]byte, 16)
+	if _, err := rand.Read(salt); err != nil {
+		return "", err
+	}
+
+	// Конвертируем случайные байты в валидные символы соли
+	for i := range salt {
+		salt[i] = saltChars[int(salt[i])%len(saltChars)]
+	}
+
+	saltStr := fmt.Sprintf("$6$%s", string(salt))
+
+	cryptService := crypt.New(crypt.SHA512)
+	hash, err := cryptService.Generate([]byte(password), []byte(saltStr))
+	if err != nil {
+		return "", err
+	}
+
+	return hash, nil
 }
 
 func min(a, b int) int {

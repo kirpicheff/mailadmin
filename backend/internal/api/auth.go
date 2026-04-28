@@ -137,7 +137,7 @@ func RegisterAuthHandlers(e *echo.Group, cfg *config.Config) {
 		// Middleware заполнит контекст данными пользователя
 		user := c.Get("user").(*auth.Claims)
 		return c.JSON(http.StatusOK, user)
-	})
+	}, auth.JWTMiddleware(cfg.JWTSecret))
 
 	e.POST("/change-password", func(c echo.Context) error {
 		type ChangeRequest struct {

@@ -28,12 +28,12 @@ func RegisterToolsHandlers(g *echo.Group, secret string) {
 		if err != nil {
 			return c.JSON(http.StatusOK, map[string]interface{}{"valid": false, "error": err.Error()})
 		}
-		
+
 		var records []string
 		for _, mx := range mxs {
 			records = append(records, fmt.Sprintf("%s (%d)", mx.Host, mx.Pref))
 		}
-		
+
 		return c.JSON(http.StatusOK, map[string]interface{}{
 			"valid":   len(mxs) > 0,
 			"records": records,
@@ -43,18 +43,30 @@ func RegisterToolsHandlers(g *echo.Group, secret string) {
 	// Отправка одиночного письма
 	tools.POST("/send-email", func(c echo.Context) error {
 		type Request struct {
-			From    string   `json:"from"`
-			To      string   `json:"to"`
-			Subject string   `json:"subject"`
-			Body    string   `json:"body"`
+			From    string `json:"from"`
+			To      string `json:"to"`
+			Subject string `json:"subject"`
+			Body    string `json:"body"`
 		}
 		var req Request
 		if err := c.Bind(&req); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
 		}
 
+		claims := c.Get("user").(*auth.Claims)
+		var fromDomain string
+		for i := len(req.From) - 1; i >= 0; i-- {
+			if req.From[i] == '@' {
+				fromDomain = req.From[i+1:]
+				break
+			}
+		}
+		if fromDomain == "" || !hasDomainAccess(claims, fromDomain) {
+			return c.JSON(http.StatusForbidden, map[string]string{"error": "access denied to send from this domain"})
+		}
+
 		encodedBody := base64.StdEncoding.EncodeToString([]byte(req.Body))
-		
+
 		msg := &mail.EmailMessage{
 			From:    req.From,
 			To:      []string{req.To},
@@ -66,7 +78,6 @@ func RegisterToolsHandlers(g *echo.Group, secret string) {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to send email: " + err.Error()})
 		}
 
-		claims := c.Get("user").(*auth.Claims)
 		audit.Log(db.DB, claims.Username, "*", "send email", fmt.Sprintf("To: %s, Subj: %s", req.To, req.Subject))
 
 		return c.JSON(http.StatusOK, map[string]string{"message": "Email sent successfully"})
@@ -75,11 +86,11 @@ func RegisterToolsHandlers(g *echo.Group, secret string) {
 	// Широковещательная рассылка
 	tools.POST("/broadcast", func(c echo.Context) error {
 		type Request struct {
-			From    string   `json:"from"`
-			Domains []string `json:"domains"`
-			Subject string   `json:"subject"`
-			Body    string   `json:"body"`
-			OnlyMailboxes bool `json:"only_mailboxes"`
+			From          string   `json:"from"`
+			Domains       []string `json:"domains"`
+			Subject       string   `json:"subject"`
+			Body          string   `json:"body"`
+			OnlyMailboxes bool     `json:"only_mailboxes"`
 		}
 		var req Request
 		if err := c.Bind(&req); err != nil {
@@ -87,11 +98,22 @@ func RegisterToolsHandlers(g *echo.Group, secret string) {
 		}
 
 		claims := c.Get("user").(*auth.Claims)
-		
+
+		if !claims.SuperAdmin {
+			if len(req.Domains) == 0 {
+				return c.JSON(http.StatusForbidden, map[string]string{"error": "you must specify domains to broadcast to"})
+			}
+			for _, d := range req.Domains {
+				if !hasDomainAccess(claims, d) {
+					return c.JSON(http.StatusForbidden, map[string]string{"error": "access denied to one or more domains"})
+				}
+			}
+		}
+
 		// Собираем список получателей асинхронно
 		go func() {
 			var recipients []string
-			
+
 			query := db.DB.Model(&models.Mailbox{})
 			if len(req.Domains) > 0 {
 				query = query.Where("domain IN (?)", req.Domains)
@@ -116,11 +138,11 @@ func RegisterToolsHandlers(g *echo.Group, secret string) {
 			}
 
 			encodedBody := base64.StdEncoding.EncodeToString([]byte(req.Body))
-			
+
 			// Рассылка в параллельных потоках (пул из 5 воркеров, чтобы не спамить слишком быстро)
 			jobs := make(chan string, len(uniqueRecipients))
 			var wg sync.WaitGroup
-			
+
 			for w := 1; w <= 5; w++ {
 				wg.Add(1)
 				go func() {
@@ -143,7 +165,7 @@ func RegisterToolsHandlers(g *echo.Group, secret string) {
 			}
 			close(jobs)
 			wg.Wait()
-			
+
 			audit.Log(db.DB, claims.Username, "*", "broadcast", fmt.Sprintf("Domains: %v, Recipients: %d", req.Domains, len(uniqueRecipients)))
 		}()
 

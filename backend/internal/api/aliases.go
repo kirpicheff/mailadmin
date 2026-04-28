@@ -24,8 +24,12 @@ func RegisterAliasHandlers(g *echo.Group, secret string) {
 		page, _ := strconv.Atoi(c.QueryParam("page"))
 		limit, _ := strconv.Atoi(c.QueryParam("limit"))
 
-		if page <= 0 { page = 1 }
-		if limit <= 0 { limit = 50 }
+		if page <= 0 {
+			page = 1
+		}
+		if limit <= 0 {
+			limit = 50
+		}
 		offset := (page - 1) * limit
 
 		claims := c.Get("user").(*auth.Claims)
@@ -73,6 +77,11 @@ func RegisterAliasHandlers(g *echo.Group, secret string) {
 			}
 		}
 
+		claims := c.Get("user").(*auth.Claims)
+		if !hasDomainAccess(claims, alias.Domain) {
+			return c.JSON(http.StatusForbidden, map[string]string{"error": "access denied to this domain"})
+		}
+
 		alias.Created = time.Now()
 		alias.Modified = time.Now()
 
@@ -80,7 +89,6 @@ func RegisterAliasHandlers(g *echo.Group, secret string) {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to create alias"})
 		}
 
-		claims := c.Get("user").(*auth.Claims)
 		audit.Log(db.DB, claims.Username, alias.Domain, "create alias", alias.Address)
 
 		return c.JSON(http.StatusCreated, alias)
@@ -92,6 +100,11 @@ func RegisterAliasHandlers(g *echo.Group, secret string) {
 		var existing models.Alias
 		if err := db.DB.Where("address = ?", address).First(&existing).Error; err != nil {
 			return c.JSON(http.StatusNotFound, map[string]string{"error": "alias not found"})
+		}
+
+		claims := c.Get("user").(*auth.Claims)
+		if !hasDomainAccess(claims, existing.Domain) {
+			return c.JSON(http.StatusForbidden, map[string]string{"error": "access denied to this domain"})
 		}
 
 		var update models.Alias
@@ -107,7 +120,6 @@ func RegisterAliasHandlers(g *echo.Group, secret string) {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to update alias"})
 		}
 
-		claims := c.Get("user").(*auth.Claims)
 		audit.Log(db.DB, claims.Username, existing.Domain, "update alias", existing.Address)
 
 		return c.JSON(http.StatusOK, existing)
@@ -119,24 +131,28 @@ func RegisterAliasHandlers(g *echo.Group, secret string) {
 		var existing models.Alias
 		db.DB.Select("domain").Where("address = ?", address).First(&existing)
 
+		claims := c.Get("user").(*auth.Claims)
+		if !hasDomainAccess(claims, existing.Domain) {
+			return c.JSON(http.StatusForbidden, map[string]string{"error": "access denied to this domain"})
+		}
+
 		if err := db.DB.Where("address = ?", address).Delete(&models.Alias{}).Error; err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to delete alias"})
 		}
 
-		claims := c.Get("user").(*auth.Claims)
 		audit.Log(db.DB, claims.Username, existing.Domain, "delete alias", address)
 
 		return c.NoContent(http.StatusNoContent)
 	})
 
 	// --- Алиасы доменов ---
-	
+
 	domainAliasGroup := aliasGroup.Group("/domain-aliases")
 
 	domainAliasGroup.GET("", func(c echo.Context) error {
 		domain := c.QueryParam("domain")
 		search := c.QueryParam("search")
-		
+
 		claims := c.Get("user").(*auth.Claims)
 		dbQuery := db.DB.Model(&models.AliasDomain{})
 
@@ -165,13 +181,18 @@ func RegisterAliasHandlers(g *echo.Group, secret string) {
 		if err := c.Bind(&alias); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
 		}
+
+		claims := c.Get("user").(*auth.Claims)
+		if !claims.SuperAdmin {
+			return c.JSON(http.StatusForbidden, map[string]string{"error": "only superadmins can create domain aliases"})
+		}
+
 		alias.Created = time.Now()
 		alias.Modified = time.Now()
 		if err := db.DB.Create(&alias).Error; err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to create domain alias"})
 		}
 
-		claims := c.Get("user").(*auth.Claims)
 		audit.Log(db.DB, claims.Username, alias.TargetDomain, "create domain alias", alias.AliasDomain)
 
 		return c.JSON(http.StatusCreated, alias)
@@ -182,11 +203,15 @@ func RegisterAliasHandlers(g *echo.Group, secret string) {
 		var existing models.AliasDomain
 		db.DB.Select("target_domain").Where("alias_domain = ?", aliasDomain).First(&existing)
 
+		claims := c.Get("user").(*auth.Claims)
+		if !claims.SuperAdmin {
+			return c.JSON(http.StatusForbidden, map[string]string{"error": "only superadmins can delete domain aliases"})
+		}
+
 		if err := db.DB.Where("alias_domain = ?", aliasDomain).Delete(&models.AliasDomain{}).Error; err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to delete domain alias"})
 		}
 
-		claims := c.Get("user").(*auth.Claims)
 		audit.Log(db.DB, claims.Username, existing.TargetDomain, "delete domain alias", aliasDomain)
 
 		return c.NoContent(http.StatusNoContent)

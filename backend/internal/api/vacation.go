@@ -19,8 +19,23 @@ func RegisterVacationHandlers(g *echo.Group, secret string) {
 	// Получение настроек автоответчика
 	vac.GET("", func(c echo.Context) error {
 		username := c.Param("username")
+
+		// Вычисляем домен и проверяем доступ
+		var domain string
+		for i := len(username) - 1; i >= 0; i-- {
+			if username[i] == '@' {
+				domain = username[i+1:]
+				break
+			}
+		}
+
+		claims := c.Get("user").(*auth.Claims)
+		if domain == "" || !hasDomainAccess(claims, domain) {
+			return c.JSON(http.StatusForbidden, map[string]string{"error": "access denied to this domain"})
+		}
+
 		var vacation models.Vacation
-		
+
 		result := db.DB.Where("email = ?", username).First(&vacation)
 		if result.Error != nil {
 			// Если записи нет - возвращаем пустую структуру со статусом деактивации
@@ -29,7 +44,7 @@ func RegisterVacationHandlers(g *echo.Group, secret string) {
 				Active: false,
 			})
 		}
-		
+
 		return c.JSON(http.StatusOK, vacation)
 	})
 
@@ -37,7 +52,7 @@ func RegisterVacationHandlers(g *echo.Group, secret string) {
 	vac.PUT("", func(c echo.Context) error {
 		username := c.Param("username")
 		claims := c.Get("user").(*auth.Claims)
-		
+
 		var req models.Vacation
 		if err := c.Bind(&req); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
@@ -49,10 +64,14 @@ func RegisterVacationHandlers(g *echo.Group, secret string) {
 			return c.JSON(http.StatusNotFound, map[string]string{"error": "mailbox not found"})
 		}
 
+		if !hasDomainAccess(claims, mailbox.Domain) {
+			return c.JSON(http.StatusForbidden, map[string]string{"error": "access denied to this domain"})
+		}
+
 		req.Email = username
 		req.Domain = mailbox.Domain
 		req.Modified = time.Now()
-		
+
 		// UPSERT логика
 		var existing models.Vacation
 		if err := db.DB.Where("email = ?", username).First(&existing).Error; err != nil {
@@ -76,7 +95,7 @@ func RegisterVacationHandlers(g *echo.Group, secret string) {
 		}
 
 		audit.Log(db.DB, claims.Username, mailbox.Domain, "update vacation", username)
-		
+
 		return c.JSON(http.StatusOK, req)
 	})
 }

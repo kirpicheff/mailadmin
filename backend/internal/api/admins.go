@@ -1,11 +1,11 @@
 package api
 
 import (
-	"net/http"
-	"time"
 	"github.com/GehirnInc/crypt"
 	_ "github.com/GehirnInc/crypt/sha512_crypt"
 	"gorm.io/gorm"
+	"net/http"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/user/mailadmin/internal/audit"
