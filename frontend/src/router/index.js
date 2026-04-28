@@ -50,6 +50,12 @@ const router = createRouter({
       name: 'SendMail',
       component: () => import('../views/SendMail.vue'),
       meta: { title: 'Отправка почты' }
+    },
+    {
+      path: '/system/health',
+      name: 'SystemHealth',
+      component: () => import('../views/SystemHealth.vue'),
+      meta: { title: 'Состояние системы' }
     }
   ]
 })

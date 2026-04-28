@@ -43,14 +43,23 @@ onMounted(() => {
   }
 })
 
-const menuItems = computed(() => [
-  { name: t('menu.dashboard'), path: '/', icon: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z' },
-  { name: t('menu.domains'), path: '/domains', icon: 'M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9' },
-  { name: t('menu.mailboxes'), path: '/mailboxes', icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
-  { name: t('menu.tools'), path: '/tools/send-mail', icon: 'M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.167M11 5.882c.443-.443 1.108-.592 1.69-.346l5.132 2.148c.582.246.963.81.963 1.441v5.66c0 .631-.381 1.195-.963 1.441l-5.132 2.148c-.582.246-1.247.097-1.69-.346M11 5.882V19.24' },
-  { name: t('menu.logs'), path: '/logs', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
-  { name: t('menu.settings'), path: '/settings/admins', icon: 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z' },
-])
+const menuItems = computed(() => {
+  const items = [
+    { name: t('menu.dashboard'), path: '/', icon: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z' },
+    { name: t('menu.domains'), path: '/domains', icon: 'M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9' },
+    { name: t('menu.mailboxes'), path: '/mailboxes', icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
+    { name: t('menu.tools'), path: '/tools/send-mail', icon: 'M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.167M11 5.882c.443-.443 1.108-.592 1.69-.346l5.132 2.148c.582.246.963.81.963 1.441v5.66c0 .631-.381 1.195-.963 1.441l-5.132 2.148c-.582.246-1.247.097-1.69-.346M11 5.882V19.24' },
+    { name: t('menu.logs'), path: '/logs', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
+  ]
+  
+  if (authStore.user?.superadmin) {
+    items.push({ name: t('menu.system'), path: '/system/health', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' })
+  }
+
+  items.push({ name: t('menu.settings'), path: '/settings/admins', icon: 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z' })
+  
+  return items
+})
 </script>
 
 <template>

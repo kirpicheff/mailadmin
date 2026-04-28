@@ -5,6 +5,7 @@
     "mailboxes": "Mailboxes",
     "logs": "Audit Log",
     "settings": "Access Settings",
+    "system": "System Health",
     "tools": "Tools"
   },
   "common": {
@@ -311,5 +312,26 @@
     "invalid": "MX Error",
     "checking": "Checking...",
     "records": "Records:"
+  },
+  "system": {
+    "title": "System Health",
+    "subtitle": "Monitoring mail server resources and services",
+    "uptime": "Uptime",
+    "ram": "Memory (RAM)",
+    "disk": "Disk (Data)",
+    "ssl": "SSL Certificate",
+    "f2b": "Fail2Ban Protection",
+    "load": "Load Average",
+    "imap": "IMAP Sessions",
+    "db_redis": "DB & Redis",
+    "queue": "Mail Queue",
+    "services": "System Services",
+    "banned_ip": "IPs banned",
+    "active_connections": "active connections",
+    "mail_queue": "emails in queue",
+    "ssl_days": "days remaining",
+    "protected": "System Protected",
+    "shields_active": "All shields active. 24/7",
+    "local_server_warning": "Note: this monitoring only functions when the control panel is running directly on the mail server."
   }
 }
