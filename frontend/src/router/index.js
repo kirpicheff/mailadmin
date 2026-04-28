@@ -6,42 +6,50 @@ const router = createRouter({
     {
       path: '/',
       name: 'Dashboard',
-      component: () => import('../views/Dashboard.vue')
+      component: () => import('../views/Dashboard.vue'),
+      meta: { title: 'Дашборд' }
     },
     {
       path: '/domains',
       name: 'Domains',
-      component: () => import('../views/Domains.vue')
+      component: () => import('../views/Domains.vue'),
+      meta: { title: 'Домены' }
     },
     {
       path: '/mailboxes',
       name: 'Mailboxes',
-      component: () => import('../views/Mailboxes.vue')
+      component: () => import('../views/Mailboxes.vue'),
+      meta: { title: 'Почтовые ящики' }
     },
     {
       path: '/login',
       name: 'Login',
-      component: () => import('../views/Login.vue')
+      component: () => import('../views/Login.vue'),
+      meta: { title: 'Вход' }
     },
     {
       path: '/settings/admins',
       name: 'AdminSettings',
-      component: () => import('../views/AdminSettings.vue')
+      component: () => import('../views/AdminSettings.vue'),
+      meta: { title: 'Администраторы' }
     },
     {
       path: '/change-password',
       name: 'ChangePassword',
-      component: () => import('../views/ChangePassword.vue')
+      component: () => import('../views/ChangePassword.vue'),
+      meta: { title: 'Смена пароля' }
     },
     {
       path: '/logs',
       name: 'Logs',
-      component: () => import('../views/Logs.vue')
+      component: () => import('../views/Logs.vue'),
+      meta: { title: 'Логи системы' }
     },
     {
       path: '/tools/send-mail',
       name: 'SendMail',
-      component: () => import('../views/SendMail.vue')
+      component: () => import('../views/SendMail.vue'),
+      meta: { title: 'Отправка почты' }
     }
   ]
 })
@@ -68,6 +76,11 @@ router.beforeEach((to) => {
   if (to.path === '/login' && loggedIn) {
     return '/'
   }
+})
+
+router.afterEach((to) => {
+  const title = to.meta.title
+  document.title = title ? `${title} - MailAdmin` : 'MailAdmin'
 })
 
 export default router
