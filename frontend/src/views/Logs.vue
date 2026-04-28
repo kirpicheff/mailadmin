@@ -32,18 +32,23 @@ const fetchLogs = async () => {
 const translateAction = (action) => {
   if (!action) return ''
   const dictionary = {
-    'create_domain': t('actions.create_domain'),
-    'update_domain': t('actions.update_domain'),
-    'delete_domain': t('actions.delete_domain'),
-    'create_mailbox': t('actions.create_mailbox'),
-    'update_mailbox': t('actions.update_mailbox'),
-    'delete_mailbox': t('actions.delete_mailbox'),
-    'create_alias': t('actions.create_alias'),
-    'update_alias': t('actions.update_alias'),
-    'delete_alias': t('actions.delete_alias'),
-    'create_admin': t('actions.create_admin'),
-    'delete_admin': t('actions.delete_admin'),
-    'login': t('actions.login')
+    'create domain': t('actions.create_domain'),
+    'update domain': t('actions.update_domain'),
+    'delete domain': t('actions.delete_domain'),
+    'create mailbox': t('actions.create_mailbox'),
+    'create mailbox + alias': t('actions.create_mailbox_alias'),
+    'update mailbox': t('actions.update_mailbox'),
+    'delete mailbox': t('actions.delete_mailbox'),
+    'create alias': t('actions.create_alias'),
+    'update alias': t('actions.update_alias'),
+    'delete alias': t('actions.delete_alias'),
+    'create admin': t('actions.create_admin'),
+    'delete admin': t('actions.delete_admin'),
+    'login': t('actions.login'),
+    'enable vacation': t('actions.enable_vacation'),
+    'update vacation': t('actions.update_vacation'),
+    'broadcast': t('tools.broadcast.title'),
+    'send email': t('tools.send_mail.title')
   }
   return dictionary[action.toLowerCase()] || action
 }
