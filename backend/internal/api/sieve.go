@@ -18,6 +18,26 @@ import (
 // maxSieveSize — максимальный размер rules_json в Байтах (MED-5)
 const maxSieveSize = 65536
 
+type Condition struct {
+	Field    string `json:"field"`
+	Operator string `json:"operator"` // contains, not_contains, is, not_is, matches
+	Value    string `json:"value"`
+}
+
+type Action struct {
+	Type   string `json:"type"`   // fileinto, redirect, discard, reject, setflag, vacation
+	Target string `json:"target"` // Folder name, email, or flag
+}
+
+type Filter struct {
+	Name       string      `json:"name"`
+	MatchAll   bool        `json:"match_all"` // true = allof, false = anyof
+	Conditions []Condition `json:"conditions"`
+	Actions    []Action    `json:"actions"`
+	Active     bool        `json:"active"`
+}
+
+
 // isValidSieveUsername проверяет, что username является валидным email (MED-2)
 func isValidSieveUsername(username string) bool {
 	parts := strings.Split(username, "@")
@@ -143,27 +163,75 @@ func RegisterSieveHandlers(g *echo.Group, secret string, cfg *config.Config) {
 
 		return c.JSON(http.StatusOK, rule)
 	})
+
+	// Импорт правил Sieve с сервера
+	g.POST("/:username/import", func(c echo.Context) error {
+		username := c.Param("username")
+		claims := c.Get("user").(*auth.Claims)
+
+		// Проверка доступа
+		if username != "GLOBAL" {
+			if !isValidSieveUsername(username) {
+				return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid username"})
+			}
+			parts := strings.Split(username, "@")
+			if !hasDomainAccess(claims, parts[1]) {
+				return c.JSON(http.StatusForbidden, map[string]string{"error": "access denied"})
+			}
+		} else {
+			if !claims.SuperAdmin {
+				return c.JSON(http.StatusForbidden, map[string]string{"error": "only superadmins can manage global sieve"})
+			}
+		}
+
+		filename := ""
+		if username == "GLOBAL" {
+			filename = "before.sieve"
+		} else {
+			filename = username + ".sieve"
+		}
+
+		safePath := filepath.Join(cfg.SieveRoot, filename)
+		if !strings.HasPrefix(safePath, filepath.Clean(cfg.SieveRoot)) {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid path"})
+		}
+
+		data, err := os.ReadFile(safePath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return c.JSON(http.StatusNotFound, map[string]string{"error": "file not found on server"})
+			}
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to read file"})
+		}
+
+		filters := parseSieveCode(string(data))
+		rulesJSON, err := json.Marshal(filters)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to marshal rules"})
+		}
+
+		var rule models.SieveRule
+		res := db.DB.Where("username = ?", username).First(&rule)
+		if res.Error != nil {
+			rule = models.SieveRule{
+				Username: username,
+			}
+		}
+		rule.RulesJSON = string(rulesJSON)
+		rule.Content = string(data)
+		rule.Active = true
+
+		if err := db.DB.Save(&rule).Error; err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to save to database"})
+		}
+
+		return c.JSON(http.StatusOK, rule)
+	})
+
 }
 
 // generateSieveCode превращает сложную JSON-структуру в работающий скрипт Sieve
 func generateSieveCode(rulesJSON string) string {
-	type Condition struct {
-		Field    string `json:"field"`
-		Operator string `json:"operator"` // contains, not_contains, is, not_is, matches
-		Value    string `json:"value"`
-	}
-	type Action struct {
-		Type   string `json:"type"`   // fileinto, redirect, discard, reject, setflag
-		Target string `json:"target"` // Folder name, email, or flag
-	}
-	type Filter struct {
-		Name       string      `json:"name"`
-		MatchAll   bool        `json:"match_all"` // true = allof, false = anyof
-		Conditions []Condition `json:"conditions"`
-		Actions    []Action    `json:"actions"`
-		Active     bool        `json:"active"`
-	}
-
 	var filters []Filter
 	if err := json.Unmarshal([]byte(rulesJSON), &filters); err != nil {
 		return "# Error parsing rules: " + err.Error()
@@ -243,3 +311,140 @@ func generateSieveCode(rulesJSON string) string {
 	code += "keep;"
 	return code
 }
+
+func parseSieveCode(code string) []Filter {
+	var filters []Filter
+	lines := strings.Split(code, "\n")
+
+	var currentFilter *Filter
+
+	for i := 0; i < len(lines); i++ {
+		line := strings.TrimSpace(lines[i])
+		if line == "" {
+			continue
+		}
+
+		if strings.HasPrefix(line, "# Filter:") {
+			if currentFilter != nil {
+				filters = append(filters, *currentFilter)
+			}
+			name := strings.TrimSpace(strings.TrimPrefix(line, "# Filter:"))
+			currentFilter = &Filter{
+				Name:   name,
+				Active: true,
+			}
+			continue
+		}
+
+		if currentFilter == nil && strings.HasPrefix(line, "if ") {
+			currentFilter = &Filter{
+				Name:   fmt.Sprintf("Imported Filter %d", len(filters)+1),
+				Active: true,
+			}
+		}
+
+		if currentFilter != nil {
+			if strings.HasPrefix(line, "if ") {
+				if strings.Contains(line, "allof") {
+					currentFilter.MatchAll = true
+				} else {
+					currentFilter.MatchAll = false
+				}
+
+				startIdx := strings.Index(line, "(")
+				endIdx := strings.LastIndex(line, ")")
+				if startIdx != -1 && endIdx != -1 && endIdx > startIdx {
+					condsStr := line[startIdx+1 : endIdx]
+					condParts := strings.Split(condsStr, ", ")
+					for _, cp := range condParts {
+						cp = strings.TrimSpace(cp)
+						if cp == "" {
+							continue
+						}
+
+						cond := Condition{}
+						isNot := false
+						if strings.HasPrefix(cp, "not ") {
+							isNot = true
+							cp = strings.TrimPrefix(cp, "not ")
+							cp = strings.TrimSpace(cp)
+						}
+
+						if strings.HasPrefix(cp, "header ") {
+							parts := strings.SplitN(cp, " ", 4)
+							if len(parts) >= 4 {
+								op := parts[1]
+								field := strings.Trim(parts[2], "\"")
+								val := strings.Trim(parts[3], "\"")
+
+								cond.Field = field
+								cond.Value = val
+
+								switch op {
+								case ":contains":
+									if isNot {
+										cond.Operator = "not_contains"
+									} else {
+										cond.Operator = "contains"
+									}
+								case ":is":
+									if isNot {
+										cond.Operator = "not_is"
+									} else {
+										cond.Operator = "is"
+									}
+								case ":matches":
+									cond.Operator = "matches"
+								case ":regex":
+									cond.Operator = "regex"
+								}
+								currentFilter.Conditions = append(currentFilter.Conditions, cond)
+							}
+						} else if strings.HasPrefix(cp, "body ") {
+							parts := strings.SplitN(cp, " ", 3)
+							if len(parts) >= 3 {
+								val := strings.Trim(parts[2], "\"")
+								cond.Field = "Body"
+								cond.Operator = "contains"
+								cond.Value = val
+								currentFilter.Conditions = append(currentFilter.Conditions, cond)
+							}
+						}
+					}
+				}
+			} else if strings.HasPrefix(line, "fileinto ") {
+				target := strings.Trim(strings.TrimPrefix(line, "fileinto "), "\";")
+				currentFilter.Actions = append(currentFilter.Actions, Action{Type: "fileinto", Target: target})
+			} else if strings.HasPrefix(line, "redirect ") {
+				target := strings.Trim(strings.TrimPrefix(line, "redirect "), "\";")
+				currentFilter.Actions = append(currentFilter.Actions, Action{Type: "redirect", Target: target})
+			} else if strings.HasPrefix(line, "discard;") {
+				currentFilter.Actions = append(currentFilter.Actions, Action{Type: "discard"})
+			} else if strings.HasPrefix(line, "reject ") {
+				target := strings.Trim(strings.TrimPrefix(line, "reject "), "\";")
+				currentFilter.Actions = append(currentFilter.Actions, Action{Type: "reject", Target: target})
+			} else if strings.HasPrefix(line, "setflag ") {
+				target := strings.Trim(strings.TrimPrefix(line, "setflag "), "\";")
+				currentFilter.Actions = append(currentFilter.Actions, Action{Type: "setflag", Target: target})
+			} else if strings.HasPrefix(line, "vacation ") {
+				parts := strings.SplitN(line, " ", 4)
+				if len(parts) >= 4 {
+					target := strings.Trim(parts[3], "\";")
+					currentFilter.Actions = append(currentFilter.Actions, Action{Type: "vacation", Target: target})
+				}
+			} else if line == "}" {
+				if currentFilter != nil {
+					filters = append(filters, *currentFilter)
+					currentFilter = nil
+				}
+			}
+		}
+	}
+
+	if currentFilter != nil {
+		filters = append(filters, *currentFilter)
+	}
+
+	return filters
+}
+

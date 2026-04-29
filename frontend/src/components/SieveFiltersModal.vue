@@ -124,6 +124,35 @@ const saveFilters = async () => {
   }
 }
 
+const importing = ref(false)
+
+
+const importFromServer = async () => {
+  if (!confirm('Это действие перезапишет текущие правила в базе данных. Продолжить?')) return
+  importing.value = true
+  try {
+    const { data } = await api.post(`/sieve/${props.username}/import`)
+    const raw = JSON.parse(data.rules_json || '[]')
+    if (raw.length > 0 && !raw[0].conditions) {
+      filters.value = raw.map(r => ({
+        name: 'Правило: ' + r.field,
+        match_all: true,
+        active: true,
+        conditions: [{ field: r.field, operator: r.operator, value: r.value }],
+        actions: [{ type: r.action, target: r.target }]
+      }))
+    } else {
+      filters.value = raw
+    }
+    alert(t('sieve.import_success'))
+  } catch (err) {
+    alert('Ошибка: ' + (err.response?.data?.error || err.message))
+  } finally {
+    importing.value = false
+  }
+}
+
+
 watch(() => props.show, (newVal) => {
   if (newVal) fetchFilters()
 })
@@ -262,7 +291,11 @@ watch(() => props.show, (newVal) => {
 
       <!-- Footer Actions -->
       <div class="px-8 py-6 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-100 dark:border-slate-800/50 flex gap-4">
-        <button @click="saveFilters" :disabled="saving || loading" class="flex-1 py-4 bg-mail-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-mail-blue-700 shadow-xl shadow-mail-blue-500/30 transition-all hover:-translate-y-0.5 disabled:opacity-50 flex items-center justify-center">
+        <button @click="importFromServer" :disabled="saving || loading || importing" class="px-6 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-indigo-500/30 transition-all hover:-translate-y-0.5 disabled:opacity-50 flex items-center justify-center">
+            <span v-if="importing" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></span>
+            {{ t('sieve.import_from_server') }}
+        </button>
+        <button @click="saveFilters" :disabled="saving || loading || importing" class="flex-1 py-4 bg-mail-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-mail-blue-700 shadow-xl shadow-mail-blue-500/30 transition-all hover:-translate-y-0.5 disabled:opacity-50 flex items-center justify-center">
             <span v-if="saving" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></span>
             {{ t('domains.modal.save_changes') }}
         </button>
