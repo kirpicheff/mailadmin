@@ -131,6 +131,8 @@ For production use, it is recommended to compile the frontend (`npm run build`) 
 
 **MailAdmin** — это современная, производительная и безопасная панель управления почтовыми серверами. Она разработана как альтернатива классическому PostfixAdmin, предлагая современный пользовательский интерфейс, строгую систему разграничения прав и высокую скорость работы благодаря бэкенду на Go.
 
+[**Документация по API**](docs/API.md)
+
 ---
 
 ## 🛠 Технологический стек
@@ -264,5 +266,7 @@ npm run build   # Сборка для продакшена (в папку dist)
 # MailAdmin Project Documentation
 
 **MailAdmin** is a modern, high-performance, and secure control panel for email servers. It is designed as an Enterprise alternative to the classic PostfixAdmin, offering a premium user interface, a strict role-based access control system, and high speed thanks to its Go-based backend.
+
+[**API Documentation**](docs/API_EN.md)
 
 ---
