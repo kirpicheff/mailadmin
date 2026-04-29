@@ -14,17 +14,18 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-// GenerateAccessToken создает короткоживущий токен доступа (15 минут)
+// GenerateAccessToken создает токен доступа (24 часа)
 func GenerateAccessToken(username string, isSuper bool, mustChange bool, secret string) (string, error) {
 	claims := &Claims{
 		Username:           username,
 		SuperAdmin:         isSuper,
 		MustChangePassword: mustChange,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}
+
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(secret))
