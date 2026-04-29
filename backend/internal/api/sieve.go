@@ -241,7 +241,8 @@ func generateSieveCode(rulesJSON string) string {
 		return "keep;"
 	}
 
-	code := "require [\"fileinto\", \"copy\", \"envelope\", \"reject\", \"imap4flags\", \"regex\", \"vacation\"];\n\n"
+	code := "require [\"fileinto\", \"copy\", \"envelope\", \"reject\", \"imap4flags\", \"regex\", \"vacation\", \"body\"];\n\n"
+
 
 	for _, f := range filters {
 		if !f.Active || len(f.Conditions) == 0 {
@@ -317,6 +318,7 @@ func parseSieveCode(code string) []Filter {
 	lines := strings.Split(code, "\n")
 
 	var currentFilter *Filter
+	var lastComment string
 
 	for i := 0; i < len(lines); i++ {
 		line := strings.TrimSpace(lines[i])
@@ -324,118 +326,154 @@ func parseSieveCode(code string) []Filter {
 			continue
 		}
 
-		if strings.HasPrefix(line, "# Filter:") {
-			if currentFilter != nil {
-				filters = append(filters, *currentFilter)
+		if strings.HasPrefix(line, "#") {
+			comment := strings.TrimSpace(strings.TrimPrefix(line, "#"))
+			if strings.HasPrefix(comment, "Filter:") {
+				comment = strings.TrimSpace(strings.TrimPrefix(comment, "Filter:"))
+			} else if strings.HasPrefix(comment, "rule:[") && strings.HasSuffix(comment, "]") {
+				comment = comment[6 : len(comment)-1]
 			}
-			name := strings.TrimSpace(strings.TrimPrefix(line, "# Filter:"))
-			currentFilter = &Filter{
-				Name:   name,
-				Active: true,
-			}
+			lastComment = comment
 			continue
 		}
 
-		if currentFilter == nil && strings.HasPrefix(line, "if ") {
-			currentFilter = &Filter{
-				Name:   fmt.Sprintf("Imported Filter %d", len(filters)+1),
-				Active: true,
+		lowerLine := strings.ToLower(line)
+		if strings.HasPrefix(lowerLine, "if ") {
+			if currentFilter != nil {
+				filters = append(filters, *currentFilter)
 			}
-		}
 
-		if currentFilter != nil {
-			if strings.HasPrefix(line, "if ") {
-				if strings.Contains(line, "allof") {
-					currentFilter.MatchAll = true
+			name := lastComment
+			if name == "" {
+				name = fmt.Sprintf("Rule %d", len(filters)+1)
+			}
+			lastComment = ""
+
+			currentFilter = &Filter{
+				Name:     name,
+				Active:   true,
+				MatchAll: true,
+			}
+
+			if strings.Contains(lowerLine, "anyof") {
+				currentFilter.MatchAll = false
+			}
+
+			var condsStr string
+			startIdx := strings.Index(line, "(")
+			endIdx := strings.LastIndex(line, ")")
+			if startIdx != -1 && endIdx != -1 && endIdx > startIdx {
+				condsStr = line[startIdx+1 : endIdx]
+			} else {
+				idxIf := strings.Index(lowerLine, "if ")
+				idxBrace := strings.Index(line, "{")
+				if idxBrace != -1 {
+					condsStr = line[idxIf+3 : idxBrace]
 				} else {
-					currentFilter.MatchAll = false
+					condsStr = line[idxIf+3:]
+				}
+			}
+
+			condsStr = strings.TrimSpace(condsStr)
+			condsStr = strings.TrimPrefix(condsStr, "allof")
+			condsStr = strings.TrimPrefix(condsStr, "anyof")
+			condsStr = strings.TrimSpace(condsStr)
+
+			var condParts []string
+			if strings.Contains(condsStr, ",") {
+				condParts = strings.Split(condsStr, ",")
+			} else {
+				condParts = []string{condsStr}
+			}
+
+			for _, cp := range condParts {
+				cp = strings.TrimSpace(cp)
+				if cp == "" {
+					continue
 				}
 
-				startIdx := strings.Index(line, "(")
-				endIdx := strings.LastIndex(line, ")")
-				if startIdx != -1 && endIdx != -1 && endIdx > startIdx {
-					condsStr := line[startIdx+1 : endIdx]
-					condParts := strings.Split(condsStr, ", ")
-					for _, cp := range condParts {
-						cp = strings.TrimSpace(cp)
-						if cp == "" {
-							continue
-						}
+				cond := Condition{}
+				isNot := false
+				if strings.HasPrefix(strings.ToLower(cp), "not ") {
+					isNot = true
+					cp = cp[4:]
+					cp = strings.TrimSpace(cp)
+				}
 
-						cond := Condition{}
-						isNot := false
-						if strings.HasPrefix(cp, "not ") {
-							isNot = true
-							cp = strings.TrimPrefix(cp, "not ")
-							cp = strings.TrimSpace(cp)
-						}
+				lowerCp := strings.ToLower(cp)
+				if strings.HasPrefix(lowerCp, "header ") {
+					op := "contains"
+					if strings.Contains(lowerCp, ":is") {
+						op = "is"
+					} else if strings.Contains(lowerCp, ":matches") {
+						op = "matches"
+					} else if strings.Contains(lowerCp, ":regex") {
+						op = "regex"
+					}
 
-						if strings.HasPrefix(cp, "header ") {
-							parts := strings.SplitN(cp, " ", 4)
-							if len(parts) >= 4 {
-								op := parts[1]
-								field := strings.Trim(parts[2], "\"")
-								val := strings.Trim(parts[3], "\"")
-
-								cond.Field = field
-								cond.Value = val
-
-								switch op {
-								case ":contains":
-									if isNot {
-										cond.Operator = "not_contains"
-									} else {
-										cond.Operator = "contains"
-									}
-								case ":is":
-									if isNot {
-										cond.Operator = "not_is"
-									} else {
-										cond.Operator = "is"
-									}
-								case ":matches":
-									cond.Operator = "matches"
-								case ":regex":
-									cond.Operator = "regex"
-								}
-								currentFilter.Conditions = append(currentFilter.Conditions, cond)
-							}
-						} else if strings.HasPrefix(cp, "body ") {
-							parts := strings.SplitN(cp, " ", 3)
-							if len(parts) >= 3 {
-								val := strings.Trim(parts[2], "\"")
-								cond.Field = "Body"
-								cond.Operator = "contains"
-								cond.Value = val
-								currentFilter.Conditions = append(currentFilter.Conditions, cond)
+					quotes := extractQuotes(cp)
+					if len(quotes) >= 2 {
+						cond.Field = quotes[0]
+						cond.Value = quotes[1]
+						cond.Field = normalizeField(cond.Field)
+						cond.Operator = op
+						if isNot {
+							if op == "contains" {
+								cond.Operator = "not_contains"
+							} else if op == "is" {
+								cond.Operator = "not_is"
 							}
 						}
+						currentFilter.Conditions = append(currentFilter.Conditions, cond)
+					}
+				} else if strings.HasPrefix(lowerCp, "body ") {
+					quotes := extractQuotes(cp)
+					if len(quotes) >= 1 {
+						cond.Field = "Body"
+						cond.Operator = "contains"
+						cond.Value = quotes[0]
+						currentFilter.Conditions = append(currentFilter.Conditions, cond)
 					}
 				}
-			} else if strings.HasPrefix(line, "fileinto ") {
-				target := strings.Trim(strings.TrimPrefix(line, "fileinto "), "\";")
-				currentFilter.Actions = append(currentFilter.Actions, Action{Type: "fileinto", Target: target})
-			} else if strings.HasPrefix(line, "redirect ") {
-				target := strings.Trim(strings.TrimPrefix(line, "redirect "), "\";")
-				currentFilter.Actions = append(currentFilter.Actions, Action{Type: "redirect", Target: target})
-			} else if strings.HasPrefix(line, "discard;") {
-				currentFilter.Actions = append(currentFilter.Actions, Action{Type: "discard"})
-			} else if strings.HasPrefix(line, "reject ") {
-				target := strings.Trim(strings.TrimPrefix(line, "reject "), "\";")
-				currentFilter.Actions = append(currentFilter.Actions, Action{Type: "reject", Target: target})
-			} else if strings.HasPrefix(line, "setflag ") {
-				target := strings.Trim(strings.TrimPrefix(line, "setflag "), "\";")
-				currentFilter.Actions = append(currentFilter.Actions, Action{Type: "setflag", Target: target})
-			} else if strings.HasPrefix(line, "vacation ") {
-				parts := strings.SplitN(line, " ", 4)
-				if len(parts) >= 4 {
-					target := strings.Trim(parts[3], "\";")
-					currentFilter.Actions = append(currentFilter.Actions, Action{Type: "vacation", Target: target})
-				}
-			} else if line == "}" {
-				if currentFilter != nil {
+			}
+		} else {
+			if currentFilter != nil {
+				if line == "}" {
 					filters = append(filters, *currentFilter)
 					currentFilter = nil
+					continue
+				}
+
+				cleanLine := strings.Trim(line, " {};\t")
+				lowerClean := strings.ToLower(cleanLine)
+
+				if strings.HasPrefix(lowerClean, "fileinto ") {
+					quotes := extractQuotes(cleanLine)
+					if len(quotes) >= 1 {
+						currentFilter.Actions = append(currentFilter.Actions, Action{Type: "fileinto", Target: quotes[0]})
+					}
+				} else if strings.HasPrefix(lowerClean, "redirect ") {
+					quotes := extractQuotes(cleanLine)
+					if len(quotes) >= 1 {
+						currentFilter.Actions = append(currentFilter.Actions, Action{Type: "redirect", Target: quotes[0]})
+					}
+				} else if lowerClean == "discard" {
+					currentFilter.Actions = append(currentFilter.Actions, Action{Type: "discard"})
+				} else if strings.HasPrefix(lowerClean, "reject ") {
+					quotes := extractQuotes(cleanLine)
+					if len(quotes) >= 1 {
+						currentFilter.Actions = append(currentFilter.Actions, Action{Type: "reject", Target: quotes[0]})
+					}
+				} else if strings.HasPrefix(lowerClean, "setflag ") {
+					quotes := extractQuotes(cleanLine)
+					if len(quotes) >= 1 {
+						currentFilter.Actions = append(currentFilter.Actions, Action{Type: "setflag", Target: quotes[0]})
+					}
+				} else if strings.HasPrefix(lowerClean, "vacation ") {
+					quotes := extractQuotes(cleanLine)
+					if len(quotes) >= 1 {
+						currentFilter.Actions = append(currentFilter.Actions, Action{Type: "vacation", Target: quotes[0]})
+					}
 				}
 			}
 		}
@@ -447,4 +485,59 @@ func parseSieveCode(code string) []Filter {
 
 	return filters
 }
+
+func extractQuotes(s string) []string {
+	var res []string
+	var current strings.Builder
+	inQuotes := false
+	inBrackets := false
+
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c == '"' {
+			if inQuotes {
+				res = append(res, current.String())
+				current.Reset()
+				inQuotes = false
+			} else {
+				inQuotes = true
+			}
+		} else if c == '[' && !inQuotes {
+			inBrackets = true
+		} else if c == ']' && !inQuotes {
+			inBrackets = false
+		} else if inQuotes {
+			current.WriteByte(c)
+		} else if inBrackets && c != ' ' && c != '"' {
+			current.WriteByte(c)
+		}
+	}
+
+	if len(res) == 0 {
+		parts := strings.Fields(s)
+		for _, p := range parts {
+			if !strings.HasPrefix(p, ":") && !strings.HasPrefix(p, "#") && p != "header" && p != "body" && p != "if" {
+				res = append(res, strings.Trim(p, "\";[]"))
+			}
+		}
+	}
+
+	return res
+}
+
+func normalizeField(f string) string {
+	fLower := strings.ToLower(f)
+	switch fLower {
+	case "subject":
+		return "Subject"
+	case "from":
+		return "From"
+	case "to":
+		return "To"
+	case "x-spam-flag", "x-spam-status":
+		return "X-Spam-Flag"
+	}
+	return f
+}
+
 
