@@ -17,3 +17,4 @@ services:
       # Проброс папок почты и сито-фильтров, если требуется управление ими
       - /data/mail:/data/mail
       - /data/sieve:/data/sieve
+      - /etc/dovecot:/etc/dovecot:ro

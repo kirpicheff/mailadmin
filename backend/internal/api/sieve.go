@@ -40,12 +40,90 @@ type Filter struct {
 
 // isValidSieveUsername проверяет, что username является валидным email (MED-2)
 func isValidSieveUsername(username string) bool {
+	if strings.Contains(username, "/") || strings.Contains(username, "\\") || strings.Contains(username, "..") {
+		return false
+	}
 	parts := strings.Split(username, "@")
 	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
 		return false
 	}
 	// Имя домена должно содержать точку (example.com)
 	return strings.Contains(parts[1], ".")
+}
+
+func resolveSievePath(username string, cfg *config.Config) (string, error) {
+	var sieveSetting, sieveBeforeSetting string
+
+	if cfg.DovecotConfigDir != "" {
+		_ = filepath.Walk(cfg.DovecotConfigDir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return nil
+			}
+			if info.IsDir() {
+				return nil
+			}
+			if matched, _ := filepath.Match("*sieve.conf", info.Name()); matched {
+				data, err := os.ReadFile(path)
+				if err == nil {
+					lines := strings.Split(string(data), "\n")
+					for _, line := range lines {
+						line = strings.TrimSpace(line)
+						if strings.HasPrefix(line, "#") {
+							continue
+						}
+						if strings.Contains(line, "=") {
+							parts := strings.SplitN(line, "=", 2)
+							key := strings.TrimSpace(parts[0])
+							value := strings.TrimSpace(parts[1])
+							
+							if idx := strings.Index(value, "#"); idx != -1 {
+								value = strings.TrimSpace(value[:idx])
+							}
+							value = strings.Trim(value, `"'`)
+							
+							if key == "sieve" {
+								sieveSetting = value
+							} else if key == "sieve_before" {
+								sieveBeforeSetting = value
+							}
+						}
+					}
+				}
+			}
+			return nil
+		})
+	}
+
+	if username == "GLOBAL" {
+		if sieveBeforeSetting != "" {
+			if strings.HasSuffix(sieveBeforeSetting, "/") {
+				return filepath.Join(sieveBeforeSetting, "before.sieve"), nil
+			}
+			if info, err := os.Stat(sieveBeforeSetting); err == nil && info.IsDir() {
+				return filepath.Join(sieveBeforeSetting, "before.sieve"), nil
+			}
+			return sieveBeforeSetting, nil
+		}
+		return filepath.Join(cfg.SieveRoot, "before.sieve"), nil
+	}
+
+	if sieveSetting != "" {
+		domain := ""
+		name := username
+		parts := strings.Split(username, "@")
+		if len(parts) == 2 {
+			name = parts[0]
+			domain = parts[1]
+		}
+
+		path := sieveSetting
+		path = strings.ReplaceAll(path, "%d", domain)
+		path = strings.ReplaceAll(path, "%n", name)
+		path = strings.ReplaceAll(path, "%u", username)
+		return path, nil
+	}
+
+	return filepath.Join(cfg.SieveRoot, username+".sieve"), nil
 }
 
 func RegisterSieveHandlers(g *echo.Group, secret string, cfg *config.Config) {
@@ -141,19 +219,16 @@ func RegisterSieveHandlers(g *echo.Group, secret string, cfg *config.Config) {
 
 		// Запись на диск (если активно)
 		if req.Active {
-			filename := ""
-			if username == "GLOBAL" {
-				filename = "before.sieve"
-			} else {
-				filename = username + ".sieve"
-			}
-
 			// Безопасная сборка пути
-			safePath := filepath.Join(cfg.SieveRoot, filename)
+			safePath, err := resolveSievePath(username, cfg)
+			if err != nil {
+				return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to resolve sieve path"})
+			}
 			
 			// Проверка на выход за пределы папки (защита от path traversal)
-			if !strings.HasPrefix(safePath, filepath.Clean(cfg.SieveRoot)) {
-				return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid path"})
+			cleanPath := filepath.Clean(safePath)
+			if !strings.HasPrefix(cleanPath, filepath.Clean(cfg.SieveRoot)) && !strings.HasPrefix(cleanPath, filepath.Clean(cfg.MailRoot)) {
+				return c.JSON(http.StatusBadRequest, map[string]string{"error": "path outside of allowed roots"})
 			}
 
 			if err := os.WriteFile(safePath, []byte(sieveCode), 0644); err != nil {
@@ -184,16 +259,14 @@ func RegisterSieveHandlers(g *echo.Group, secret string, cfg *config.Config) {
 			}
 		}
 
-		filename := ""
-		if username == "GLOBAL" {
-			filename = "before.sieve"
-		} else {
-			filename = username + ".sieve"
+		safePath, err := resolveSievePath(username, cfg)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to resolve sieve path"})
 		}
 
-		safePath := filepath.Join(cfg.SieveRoot, filename)
-		if !strings.HasPrefix(safePath, filepath.Clean(cfg.SieveRoot)) {
-			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid path"})
+		cleanPath := filepath.Clean(safePath)
+		if !strings.HasPrefix(cleanPath, filepath.Clean(cfg.SieveRoot)) && !strings.HasPrefix(cleanPath, filepath.Clean(cfg.MailRoot)) {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "path outside of allowed roots"})
 		}
 
 		data, err := os.ReadFile(safePath)

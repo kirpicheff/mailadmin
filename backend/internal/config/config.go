@@ -14,8 +14,9 @@ type Config struct {
 	ListenAddr  string
 	CORSOrigins []string
 	MailRoot    string
-	SieveRoot   string
-	LogPath     string
+	SieveRoot        string
+	LogPath          string
+	DovecotConfigDir string
 }
 
 func LoadConfig() *Config {
@@ -52,6 +53,10 @@ func LoadConfig() *Config {
 	logPath := os.Getenv("LOG_PATH")
 	if logPath == "" {
 		logPath = "/var/log/mail.log"
+	}
+	dovecotConfigDir := os.Getenv("DOVECOT_CONFIG_DIR")
+	if dovecotConfigDir == "" {
+		dovecotConfigDir = "/etc/dovecot"
 	}
 
 	// ... (cors logic)
@@ -91,8 +96,9 @@ func LoadConfig() *Config {
 		ListenAddr:  addr,
 		CORSOrigins: origins,
 		MailRoot:    mailRoot,
-		SieveRoot:   sieveRoot,
-		LogPath:     logPath,
+		SieveRoot:        sieveRoot,
+		LogPath:          logPath,
+		DovecotConfigDir: dovecotConfigDir,
 	}
 }
 
