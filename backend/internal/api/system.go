@@ -365,13 +365,35 @@ func getSystemStats() SystemStats {
 		}
 		if total > 0 {
 			s.RAMTotal = int(total / 1024)
-			used := total - available
-			s.RAMUsed = int(used / 1024)
-			s.RAMPerc = int(float64(used) / float64(total) * 100)
+			
+			// ПРИОРИТЕТ: Ручное переопределение общего объема RAM (для Docker-in-LXC)
+			if override := os.Getenv("MAILADMIN_RAM_TOTAL"); override != "" {
+				if val, err := strconv.Atoi(override); err == nil {
+					s.RAMTotal = val
+				}
+			}
+
+			// Пытаемся взять реальное использование из cgroups
+			if data, err := os.ReadFile("/sys/fs/cgroup/memory.current"); err == nil {
+				if val, err := strconv.ParseInt(strings.TrimSpace(string(data)), 10, 64); err == nil {
+					s.RAMUsed = int(val / 1024 / 1024)
+				}
+			} else if data, err := os.ReadFile("/sys/fs/cgroup/memory/memory.usage_in_bytes"); err == nil {
+				if val, err := strconv.ParseInt(strings.TrimSpace(string(data)), 10, 64); err == nil {
+					s.RAMUsed = int(val / 1024 / 1024)
+				}
+			}
+
+			// Фолбэк на расчет через Available, если cgroups не доступны
+			if s.RAMUsed <= 0 {
+				s.RAMUsed = int((total - available) / 1024)
+			}
+			
+			s.RAMPerc = int(float64(s.RAMUsed) / float64(s.RAMTotal) * 100)
 		}
 	}
 
-	// Фолбэк на free -m, если meminfo пустой
+	// 2. Фолбэк на free -m, если meminfo пустой
 	if s.RAMTotal <= 0 {
 		ramOut := runCmd("free", "-m")
 		if ramOut != "" {
