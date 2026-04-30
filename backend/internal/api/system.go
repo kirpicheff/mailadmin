@@ -340,22 +340,52 @@ func getSystemStats() SystemStats {
 	var s SystemStats
 	s.Hostname, _ = os.Hostname()
 
-	// 1. RAM (free -m)
-	ramOut := runCmd("free", "-m")
-	if ramOut != "" {
-		scanner := bufio.NewScanner(strings.NewReader(ramOut))
+	// 1. RAM - Читаем из /proc/meminfo для точности в контейнерах
+	memInfo, err := os.ReadFile("/proc/meminfo")
+	if err == nil {
+		scanner := bufio.NewScanner(bytes.NewReader(memInfo))
+		var total, available int64
 		for scanner.Scan() {
 			line := scanner.Text()
-			if strings.HasPrefix(line, "Mem:") {
-				fields := strings.Fields(line)
-				if len(fields) > 2 {
-					s.RAMTotal, _ = strconv.Atoi(fields[1])
-					s.RAMUsed, _ = strconv.Atoi(fields[2])
-					if s.RAMTotal > 0 {
-						s.RAMPerc = int(float64(s.RAMUsed) / float64(s.RAMTotal) * 100)
+			fields := strings.Fields(line)
+			if len(fields) < 2 { continue }
+			
+			key := strings.TrimSuffix(fields[0], ":")
+			val, _ := strconv.ParseInt(fields[1], 10, 64)
+			
+			if key == "MemTotal" {
+				total = val // в kB
+			} else if key == "MemAvailable" {
+				available = val // в kB
+			}
+		}
+		
+		if total > 0 {
+			s.RAMTotal = int(total / 1024)
+			used := total - available
+			s.RAMUsed = int(used / 1024)
+			s.RAMPerc = int(float64(used) / float64(total) * 100)
+		}
+	}
+
+	// Если /proc/meminfo не сработал, фолбэк на старый метод
+	if s.RAMTotal <= 0 {
+		ramOut := runCmd("free", "-m")
+		if ramOut != "" {
+			scanner := bufio.NewScanner(strings.NewReader(ramOut))
+			for scanner.Scan() {
+				line := scanner.Text()
+				if strings.HasPrefix(line, "Mem:") {
+					fields := strings.Fields(line)
+					if len(fields) > 2 {
+						s.RAMTotal, _ = strconv.Atoi(fields[1])
+						s.RAMUsed, _ = strconv.Atoi(fields[2])
+						if s.RAMTotal > 0 {
+							s.RAMPerc = int(float64(s.RAMUsed) / float64(s.RAMTotal) * 100)
+						}
 					}
+					break
 				}
-				break
 			}
 		}
 	}

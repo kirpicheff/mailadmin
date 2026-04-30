@@ -30,9 +30,11 @@ type Action struct {
 }
 
 type Filter struct {
+	ID         string      `json:"id"`
 	Name       string      `json:"name"`
-	Title      string      `json:"title"` // Дубликат для фронтенда
-	MatchAll   bool        `json:"match_all"` // true = allof, false = anyof
+	Title      string      `json:"title"`
+	Label      string      `json:"label"` // Максимальная совместимость
+	MatchAll   bool        `json:"match_all"`
 	Conditions []Condition `json:"conditions"`
 	Actions    []Action    `json:"actions"`
 	Active     bool        `json:"active"`
@@ -424,8 +426,10 @@ func parseSieveCode(code string) []Filter {
 			lastComment = ""
 
 			currentFilter = &Filter{
+				ID:       fmt.Sprintf("rule_%d", len(filters)+1),
 				Name:     name,
 				Title:    name,
+				Label:    name,
 				Active:   true,
 				MatchAll: true,
 			}
