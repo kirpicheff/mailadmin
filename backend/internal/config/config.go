@@ -28,7 +28,7 @@ func LoadConfig() *Config {
 	dsn := os.Getenv("DB_DSN")
 	// ... (dsn logic)
 	if dsn == "" {
-		dsn = "user:password@tcp(127.0.0.1:3306)/mailadmin?charset=utf8mb4&parseTime=True&loc=Local"
+		dsn = "user:password@tcp(127.0.0.1:3306)/mailadmin?charset=utf8&parseTime=True&loc=Local"
 	}
 
 	secret := os.Getenv("JWT_SECRET")
