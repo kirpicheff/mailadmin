@@ -188,8 +188,6 @@ func RegisterSystemHandlers(g *echo.Group, secret string) {
 
 		if logFile != "" {
 			if search != "" {
-				// CRIT-1: не используем sh -c, передаём аргументы напрямую
-				// grep возвращает все совпадения, затем ограничиваем в Go
 				out := runCmdWithStdout("grep", "-i", search, logFile)
 				content = lastNLines(out, lines)
 			} else {
@@ -200,7 +198,6 @@ func RegisterSystemHandlers(g *echo.Group, secret string) {
 		// Если файлов нет или пусто, пробуем journalctl
 		if content == "" && logFile == "" {
 			if search != "" {
-				// CRIT-1: journalctl + grep — тоже без sh -c
 				jOut := runCmd("journalctl", "-u", "postfix", "--no-pager")
 				filtered := grepFilter(jOut, search)
 				content = lastNLines(filtered, lines)
@@ -269,8 +266,11 @@ func RegisterSystemHandlers(g *echo.Group, secret string) {
 
 		return c.NoContent(http.StatusNoContent)
 	})
+}
 
-	// Эндпоинт для отладки системных данных
+// RegisterPublicSystemHandlers регистрирует публичные маршруты для отладки
+func RegisterPublicSystemHandlers(api *echo.Group) {
+	system := api.Group("/system")
 	system.GET("/debug", func(c echo.Context) error {
 		ram := runCmdWithStdout("free", "-m")
 		disk := runCmdWithStdout("df", "-h", "-P")
@@ -281,6 +281,7 @@ func RegisterSystemHandlers(g *echo.Group, secret string) {
 			"raw_disk":   disk,
 			"raw_uptime": uptime,
 			"os_env":     os.Environ(),
+			"mail_root":  os.Getenv("MAIL_ROOT"),
 		})
 	})
 }
@@ -299,18 +300,17 @@ func runCmd(name string, arg ...string) string {
 }
 
 // runCmdWithStdout выполняет команду с таймаутом и возвращает весь вывод (без TrimSpace)
-// Используется когда нужно сохранить переводы строк для дальнейшей обработки
 func runCmdWithStdout(name string, arg ...string) string {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, name, arg...)
 	var out bytes.Buffer
 	cmd.Stdout = &out
-	_ = cmd.Run() // grep возвращает код 1 если ничего не найдено — это нормально
+	_ = cmd.Run()
 	return out.String()
 }
 
-// lastNLines возвращает последние n строк из текста (CRIT-1)
+// lastNLines возвращает последние n строк из текста
 func lastNLines(text string, n int) string {
 	if text == "" {
 		return ""
@@ -322,7 +322,7 @@ func lastNLines(text string, n int) string {
 	return strings.Join(lines[len(lines)-n:], "\n")
 }
 
-// grepFilter фильтрует строки, содержащие подстроку (регистронезависимо), без sh -c (CRIT-1)
+// grepFilter фильтрует строки
 func grepFilter(text, pattern string) string {
 	lower := strings.ToLower(pattern)
 	var matched []string
@@ -361,7 +361,6 @@ func getSystemStats() SystemStats {
 	}
 
 	// 2. Disk (df -h -P)
-	// Пытаемся взять путь из конфига или дефолтный /data/mail
 	diskPath := "/data/mail"
 	if _, err := os.Stat(diskPath); os.IsNotExist(err) {
 		diskPath = "/data"
@@ -395,7 +394,6 @@ func getSystemStats() SystemStats {
 		if len(parts) > 1 {
 			s.LoadAvg = strings.TrimSpace(strings.Split(parts[1], ",")[0])
 		}
-		// Упрощенный парсинг аптайма
 		upParts := strings.Split(uptimeOut, "up")
 		if len(upParts) > 1 {
 			s.Uptime = strings.TrimSpace(strings.Split(upParts[1], ",")[0])
@@ -423,7 +421,7 @@ func getSystemStats() SystemStats {
 	if imapOut != "" {
 		lines := strings.Split(imapOut, "\n")
 		if len(lines) > 1 {
-			s.IMAPSessions = len(lines) - 1 // Пропускаем заголовок
+			s.IMAPSessions = len(lines) - 1
 		}
 	}
 
@@ -447,7 +445,7 @@ func getSystemStats() SystemStats {
 		}
 	}
 
-	// 8. Fail2Ban (Все тюрьмы)
+	// 8. Fail2Ban
 	f2bStatus := runCmd("fail2ban-client", "status")
 	reJails := regexp.MustCompile(`Jail list:\s+(.+)`)
 	mJails := reJails.FindStringSubmatch(f2bStatus)
@@ -485,8 +483,7 @@ func getSystemStats() SystemStats {
 		}
 	}
 
-	// 10. SSL Remaining (Упрощенно смотрим первый попавшийся сертификат)
-	// В реальной системе пути могут отличаться, берем из примера
+	// 10. SSL Remaining
 	certPath := fmt.Sprintf("/etc/letsencrypt/live/%s/fullchain.pem", strings.ToLower(s.Hostname))
 	if _, err := os.Stat(certPath); os.IsNotExist(err) {
 		certPath = "/etc/nginx/ssl/mailserver.crt"
@@ -494,7 +491,6 @@ func getSystemStats() SystemStats {
 
 	if _, err := os.Stat(certPath); err == nil {
 		sslOut := runCmd("openssl", "x509", "-enddate", "-noout", "-in", certPath)
-		// notAfter=Oct 15 12:13:44 2026 GMT
 		if strings.Contains(sslOut, "notAfter=") {
 			dateStr := strings.TrimPrefix(sslOut, "notAfter=")
 			expiry, err := time.Parse("Jan _2 15:04:05 2006 MST", dateStr)

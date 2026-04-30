@@ -31,6 +31,7 @@ type Action struct {
 
 type Filter struct {
 	Name       string      `json:"name"`
+	Title      string      `json:"title"` // Дубликат для фронтенда
 	MatchAll   bool        `json:"match_all"` // true = allof, false = anyof
 	Conditions []Condition `json:"conditions"`
 	Actions    []Action    `json:"actions"`
@@ -424,6 +425,7 @@ func parseSieveCode(code string) []Filter {
 
 			currentFilter = &Filter{
 				Name:     name,
+				Title:    name,
 				Active:   true,
 				MatchAll: true,
 			}
