@@ -266,19 +266,15 @@ func RegisterSystemHandlers(g *echo.Group, secret string) {
 
 		return c.NoContent(http.StatusNoContent)
 	})
-}
 
-// RegisterPublicSystemHandlers регистрирует публичные маршруты для отладки
-func RegisterPublicSystemHandlers(api *echo.Group) {
-	// Эндпоинт для отладки системных данных
-	system := api.Group("/system")
+	// Эндпоинт для отладки системных данных (теперь под авторизацией)
 	system.GET("/debug", func(c echo.Context) error {
 		ram := runCmdWithStdout("free", "-m")
 		disk := runCmdWithStdout("df", "-h", "-P")
 		uptime := runCmdWithStdout("uptime")
 		meminfo, _ := os.ReadFile("/proc/meminfo")
 		cgroup, _ := os.ReadFile("/proc/self/cgroup")
-		
+
 		return c.JSON(http.StatusOK, map[string]interface{}{
 			"build_date":  time.Now().Format(time.RFC3339),
 			"raw_ram":     ram,
@@ -291,6 +287,7 @@ func RegisterPublicSystemHandlers(api *echo.Group) {
 		})
 	})
 }
+
 
 // runCmd выполняет команду с таймаутом 10 секунд (LOW-1 / HIGH-2)
 func runCmd(name string, arg ...string) string {
