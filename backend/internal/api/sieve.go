@@ -482,12 +482,17 @@ func parseSieveCode(code string) []Filter {
 						op = "matches"
 					} else if strings.Contains(lowerCp, ":regex") {
 						op = "regex"
+					} else if strings.Contains(lowerCp, ":value") {
+						// Для :value "ge" и т.д. часто используется i;ascii-numeric
+						op = "matches" 
 					}
 
 					quotes := extractQuotes(cp)
 					if len(quotes) >= 2 {
-						cond.Field = quotes[0]
-						cond.Value = quotes[1]
+						// В Sieve параметры (:value, :comparator) идут в начале, 
+						// а имя заголовка и значение — в конце.
+						cond.Field = quotes[len(quotes)-2]
+						cond.Value = quotes[len(quotes)-1]
 						cond.Field = normalizeField(cond.Field)
 						cond.Operator = op
 						if isNot {
@@ -563,7 +568,6 @@ func extractQuotes(s string) []string {
 	var res []string
 	var current strings.Builder
 	inQuotes := false
-	inBrackets := false
 
 	for i := 0; i < len(s); i++ {
 		c := s[i]
@@ -575,22 +579,26 @@ func extractQuotes(s string) []string {
 			} else {
 				inQuotes = true
 			}
-		} else if c == '[' && !inQuotes {
-			inBrackets = true
-		} else if c == ']' && !inQuotes {
-			inBrackets = false
 		} else if inQuotes {
-			current.WriteByte(c)
-		} else if inBrackets && c != ' ' && c != '"' {
+			if c == '\\' && i+1 < len(s) {
+				// Обработка экранированных кавычек
+				if s[i+1] == '"' || s[i+1] == '\\' {
+					current.WriteByte(s[i+1])
+					i++
+					continue
+				}
+			}
 			current.WriteByte(c)
 		}
 	}
 
+	// Если кавычек не нашли совсем, пробуем взять просто слова (fallback)
 	if len(res) == 0 {
 		parts := strings.Fields(s)
 		for _, p := range parts {
-			if !strings.HasPrefix(p, ":") && !strings.HasPrefix(p, "#") && p != "header" && p != "body" && p != "if" {
-				res = append(res, strings.Trim(p, "\";[]"))
+			p = strings.Trim(p, "\";,[]")
+			if p != "" && !strings.HasPrefix(p, ":") && p != "header" && p != "body" && p != "if" && p != "anyof" && p != "allof" {
+				res = append(res, p)
 			}
 		}
 	}

@@ -329,21 +329,29 @@ func getSystemStats() SystemStats {
 	// 1. RAM (free -m)
 	ramOut := runCmd("free", "-m")
 	if ramOut != "" {
-		lines := strings.Split(ramOut, "\n")
-		if len(lines) > 1 {
-			fields := strings.Fields(lines[1])
-			if len(fields) > 2 {
-				s.RAMTotal, _ = strconv.Atoi(fields[1])
-				s.RAMUsed, _ = strconv.Atoi(fields[2])
-				if s.RAMTotal > 0 {
-					s.RAMPerc = int(float64(s.RAMUsed) / float64(s.RAMTotal) * 100)
+		scanner := bufio.NewScanner(strings.NewReader(ramOut))
+		for scanner.Scan() {
+			line := scanner.Text()
+			if strings.HasPrefix(line, "Mem:") {
+				fields := strings.Fields(line)
+				if len(fields) > 2 {
+					s.RAMTotal, _ = strconv.Atoi(fields[1])
+					s.RAMUsed, _ = strconv.Atoi(fields[2])
+					if s.RAMTotal > 0 {
+						s.RAMPerc = int(float64(s.RAMUsed) / float64(s.RAMTotal) * 100)
+					}
 				}
+				break
 			}
 		}
 	}
 
 	// 2. Disk (df -h -P)
-	diskPath := "/data"
+	// Пытаемся взять путь из конфига или дефолтный /data/mail
+	diskPath := "/data/mail"
+	if _, err := os.Stat(diskPath); os.IsNotExist(err) {
+		diskPath = "/data"
+	}
 	if _, err := os.Stat(diskPath); os.IsNotExist(err) {
 		diskPath = "/"
 	}
