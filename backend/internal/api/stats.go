@@ -63,11 +63,20 @@ func RegisterStatsHandlers(g *echo.Group, secret string) {
 		}
 		lQuery.Order("timestamp DESC").Limit(10).Find(&recentLogs)
 
+		// Если лимит квоты меньше реально занятого (бывает при переезде или безлимите),
+		// подправляем цифры для красоты на дашборде
+		displayLimit := quotaLimit
+		if displayLimit > 0 && quotaUsed > displayLimit {
+			// Если занято больше лимита, показываем лимит равным использованию,
+			// чтобы шкала была 100%, а не 13000%
+			displayLimit = quotaUsed
+		}
+
 		return c.JSON(http.StatusOK, map[string]interface{}{
 			"domains_count":   domainsCount,
 			"mailboxes_count": mailboxesCount,
 			"aliases_count":   aliasesCount,
-			"quota_limit":     quotaLimit,
+			"quota_limit":     displayLimit,
 			"quota_used":      quotaUsed,
 			"recent_logs":     recentLogs,
 		})

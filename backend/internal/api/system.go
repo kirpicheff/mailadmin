@@ -269,6 +269,20 @@ func RegisterSystemHandlers(g *echo.Group, secret string) {
 
 		return c.NoContent(http.StatusNoContent)
 	})
+
+	// Эндпоинт для отладки системных данных
+	system.GET("/debug", func(c echo.Context) error {
+		ram := runCmdWithStdout("free", "-m")
+		disk := runCmdWithStdout("df", "-h", "-P")
+		uptime := runCmdWithStdout("uptime")
+		
+		return c.JSON(http.StatusOK, map[string]interface{}{
+			"raw_ram":    ram,
+			"raw_disk":   disk,
+			"raw_uptime": uptime,
+			"os_env":     os.Environ(),
+		})
+	})
 }
 
 // runCmd выполняет команду с таймаутом 10 секунд (LOW-1 / HIGH-2)
