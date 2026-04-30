@@ -22,11 +22,16 @@ func InitDB(dsn string) {
 	var charSet string
 	DB.Raw("SELECT character_set_name FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'domain' AND column_name = 'description' LIMIT 1").Scan(&charSet)
 
+	// Если кодировка не utf8mb4 (включая utf8mb3/utf8), пытаемся обновиться
 	if charSet != "" && charSet != "utf8mb4" {
-		log.Println("Old charset detected (" + charSet + "). Forcing database conversion to utf8mb4 before migration...")
+		log.Printf("Database charset is '%s'. Forcing conversion to utf8mb4/utf8mb3...", charSet)
 
-		// Отключаем проверку внешних ключей, чтобы MariaDB разрешила конвертировать базу
+		// Отключаем проверку внешних ключей
 		DB.Exec("SET FOREIGN_KEY_CHECKS = 0")
+
+		// Специально для MariaDB/PostfixAdmin: дропаем ключи, которые мешают конвертации даже при FOREIGN_KEY_CHECKS=0
+		DB.Exec("ALTER TABLE vacation_notification DROP FOREIGN KEY vacation_notification_pkey")
+		DB.Exec("ALTER TABLE vacation_notification DROP FOREIGN KEY vacation_notification_ibfk_1")
 
 		tablesToConvert := []string{
 			"domain", "admin", "domain_admins", "mailbox", "alias",
@@ -38,15 +43,27 @@ func InitDB(dsn string) {
 			var exists int
 			DB.Raw("SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ? LIMIT 1", table).Scan(&exists)
 			if exists == 1 {
-				log.Printf("Converting table %s to utf8mb4...", table)
-				DB.Exec(fmt.Sprintf("ALTER TABLE `%s` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci", table))
+				log.Printf("Processing table %s...", table)
+				
+				// Пробуем сделать ROW_FORMAT=DYNAMIC для поддержки длинных индексов (Error 1071)
+				DB.Exec(fmt.Sprintf("ALTER TABLE `%s` ROW_FORMAT=DYNAMIC", table))
+
+				// Пытаемся конвертировать в utf8mb4
+				err := DB.Exec(fmt.Sprintf("ALTER TABLE `%s` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci", table)).Error
+				if err != nil {
+					log.Printf("Table %s: utf8mb4 failed (%v), falling back to utf8mb3...", table, err)
+					// Если utf8mb4 не пролез (старая MariaDB или слишком длинные ключи), используем обычный utf8
+					DB.Exec(fmt.Sprintf("ALTER TABLE `%s` CONVERT TO CHARACTER SET utf8 COLLATE utf8_general_ci", table))
+				}
 			}
 		}
 
+		// Возвращаем ключи обратно
+		DB.Exec("ALTER TABLE vacation_notification ADD CONSTRAINT vacation_notification_pkey FOREIGN KEY (on_vacation) REFERENCES vacation(email) ON DELETE CASCADE")
 		DB.Exec("SET FOREIGN_KEY_CHECKS = 1")
-		log.Println("Database charsets forced to utf8mb4 successfully.")
+		log.Println("Database conversion step completed.")
 	} else if charSet == "utf8mb4" {
-		log.Println("Database charsets are already up-to-date (utf8mb4).")
+		log.Println("Database charsets are already utf8mb4.")
 	}
 
 	// 2. Автоматическая миграция (создание таблиц, если их нет)
