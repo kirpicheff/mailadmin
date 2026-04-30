@@ -40,15 +40,15 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 
 		// Фильтр по правам админа
 		if !claims.SuperAdmin {
-			dbQuery = dbQuery.Where("domain IN (?)", db.DB.Table("domain_admins").Select("domain").Where("username = ?", claims.Username))
+			dbQuery = dbQuery.Where("mailbox.domain IN (?)", db.DB.Table("domain_admins").Select("domain").Where("username = ?", claims.Username))
 		}
 
 		// Если есть поиск - ищем по всем доступным доменам
 		if search != "" {
 			s := "%" + search + "%"
-			dbQuery = dbQuery.Where("(username LIKE ? OR name LIKE ?)", s, s)
+			dbQuery = dbQuery.Where("(mailbox.username LIKE ? OR mailbox.name LIKE ?)", s, s)
 		} else if domain != "" {
-			dbQuery = dbQuery.Where("domain = ?", domain)
+			dbQuery = dbQuery.Where("mailbox.domain = ?", domain)
 		} else {
 			// Если домен не указан и поиска нет - ничего не возвращаем или первый домен
 			return c.JSON(http.StatusOK, []models.Mailbox{})
@@ -56,7 +56,7 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 
 		// Фильтр по статусу
 		if active := c.QueryParam("active"); active != "" {
-			dbQuery = dbQuery.Where("active = ?", active == "true")
+			dbQuery = dbQuery.Where("mailbox.active = ?", active == "true")
 		}
 
 		var total int64
