@@ -426,12 +426,14 @@ func parseSieveCode(code string) []Filter {
 			lastComment = ""
 
 			currentFilter = &Filter{
-				ID:       fmt.Sprintf("rule_%d", len(filters)+1),
-				Name:     name,
-				Title:    name,
-				Label:    name,
-				Active:   true,
-				MatchAll: true,
+				ID:         fmt.Sprintf("rule_%d", len(filters)+1),
+				Name:       name,
+				Title:      name,
+				Label:      name,
+				Active:     true,
+				MatchAll:   true,
+				Conditions: []Condition{},
+				Actions:    []Action{},
 			}
 
 			if strings.Contains(lowerLine, "anyof") {

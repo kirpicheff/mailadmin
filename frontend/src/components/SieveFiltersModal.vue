@@ -60,16 +60,21 @@ const fetchFilters = async () => {
   try {
     const { data } = await api.get(`/sieve/${props.username}`)
     const raw = JSON.parse(data.rules_json || '[]')
-    if (raw.length > 0 && !raw[0].conditions) {
+    
+    // Проверка формата (новый формат содержит массив conditions)
+    if (raw.length > 0 && !Object.prototype.hasOwnProperty.call(raw[0], 'conditions')) {
       filters.value = raw.map(r => ({
-        name: 'Правило: ' + r.field,
+        name: 'Правило: ' + (r.field || 'New'),
         match_all: true,
         active: true,
-        conditions: [{ field: r.field, operator: r.operator, value: r.value }],
-        actions: [{ type: r.action, target: r.target }]
+        conditions: [{ field: r.field || 'Subject', operator: r.operator || 'contains', value: r.value || '' }],
+        actions: [{ type: r.action || 'fileinto', target: r.target || 'INBOX' }]
       }))
     } else {
-      filters.value = raw
+      filters.value = raw.map(r => ({
+        ...r,
+        name: r.title || r.name || r.label || t('sieve.add_filter')
+      }))
     }
   } catch (err) {
     console.error('Failed to fetch sieve filters:', err)
@@ -126,23 +131,26 @@ const saveFilters = async () => {
 
 const importing = ref(false)
 
-
 const importFromServer = async () => {
   if (!confirm('Это действие перезапишет текущие правила в базе данных. Продолжить?')) return
   importing.value = true
   try {
     const { data } = await api.post(`/sieve/${props.username}/import`)
     const raw = JSON.parse(data.rules_json || '[]')
-    if (raw.length > 0 && !raw[0].conditions) {
+    
+    if (raw.length > 0 && !Object.prototype.hasOwnProperty.call(raw[0], 'conditions')) {
       filters.value = raw.map(r => ({
-        name: 'Правило: ' + r.field,
+        name: 'Правило: ' + (r.field || 'New'),
         match_all: true,
         active: true,
-        conditions: [{ field: r.field, operator: r.operator, value: r.value }],
-        actions: [{ type: r.action, target: r.target }]
+        conditions: [{ field: r.field || 'Subject', operator: r.operator || 'contains', value: r.value || '' }],
+        actions: [{ type: r.action || 'fileinto', target: r.target || 'INBOX' }]
       }))
     } else {
-      filters.value = raw
+      filters.value = raw.map(r => ({
+        ...r,
+        name: r.title || r.name || r.label || t('sieve.add_filter')
+      }))
     }
     alert(t('sieve.import_success'))
   } catch (err) {
@@ -151,7 +159,6 @@ const importFromServer = async () => {
     importing.value = false
   }
 }
-
 
 watch(() => props.show, (newVal) => {
   if (newVal) fetchFilters()

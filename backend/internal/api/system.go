@@ -270,18 +270,24 @@ func RegisterSystemHandlers(g *echo.Group, secret string) {
 
 // RegisterPublicSystemHandlers регистрирует публичные маршруты для отладки
 func RegisterPublicSystemHandlers(api *echo.Group) {
+	// Эндпоинт для отладки системных данных
 	system := api.Group("/system")
 	system.GET("/debug", func(c echo.Context) error {
 		ram := runCmdWithStdout("free", "-m")
 		disk := runCmdWithStdout("df", "-h", "-P")
 		uptime := runCmdWithStdout("uptime")
+		meminfo, _ := os.ReadFile("/proc/meminfo")
+		cgroup, _ := os.ReadFile("/proc/self/cgroup")
 		
 		return c.JSON(http.StatusOK, map[string]interface{}{
-			"raw_ram":    ram,
-			"raw_disk":   disk,
-			"raw_uptime": uptime,
-			"os_env":     os.Environ(),
-			"mail_root":  os.Getenv("MAIL_ROOT"),
+			"build_date":  time.Now().Format(time.RFC3339),
+			"raw_ram":     ram,
+			"raw_disk":    disk,
+			"raw_uptime":  uptime,
+			"raw_meminfo": string(meminfo),
+			"raw_cgroup":  string(cgroup),
+			"os_env":      os.Environ(),
+			"mail_root":   os.Getenv("MAIL_ROOT"),
 		})
 	})
 }
@@ -340,26 +346,23 @@ func getSystemStats() SystemStats {
 	var s SystemStats
 	s.Hostname, _ = os.Hostname()
 
-	// 1. RAM - Читаем из /proc/meminfo для точности в контейнерах
-	memInfo, err := os.ReadFile("/proc/meminfo")
-	if err == nil {
+	// 1. RAM - Читаем из /proc/meminfo
+	if memInfo, err := os.ReadFile("/proc/meminfo"); err == nil {
 		scanner := bufio.NewScanner(bytes.NewReader(memInfo))
 		var total, available int64
 		for scanner.Scan() {
 			line := scanner.Text()
 			fields := strings.Fields(line)
 			if len(fields) < 2 { continue }
-			
 			key := strings.TrimSuffix(fields[0], ":")
 			val, _ := strconv.ParseInt(fields[1], 10, 64)
-			
+
 			if key == "MemTotal" {
-				total = val // в kB
+				total = val
 			} else if key == "MemAvailable" {
-				available = val // в kB
+				available = val
 			}
 		}
-		
 		if total > 0 {
 			s.RAMTotal = int(total / 1024)
 			used := total - available
@@ -368,7 +371,7 @@ func getSystemStats() SystemStats {
 		}
 	}
 
-	// Если /proc/meminfo не сработал, фолбэк на старый метод
+	// Фолбэк на free -m, если meminfo пустой
 	if s.RAMTotal <= 0 {
 		ramOut := runCmd("free", "-m")
 		if ramOut != "" {
