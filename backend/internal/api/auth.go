@@ -65,21 +65,25 @@ func RegisterAuthHandlers(e *echo.Group, cfg *config.Config) {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "could not generate refresh token"})
 		}
 
-		// Сохраняем refresh token в базу (опционально, для управления сессиями)
-		db.DB.Model(&admin).Updates(map[string]interface{}{
-			"token":          refreshToken,
-			"token_validity": time.Now().Add(7 * 24 * time.Hour),
-		})
+		// Сохраняем refresh token в отдельную таблицу сессий
+		session := models.Session{
+			Username:     admin.Username,
+			RefreshToken: refreshToken,
+			UserAgent:    c.Request().UserAgent(),
+			IP:           c.RealIP(),
+			ExpiresAt:    time.Now().Add(7 * 24 * time.Hour),
+		}
+		db.DB.Create(&session)
 
 		// Установка Refresh Token в HttpOnly cookie
 		cookie := new(http.Cookie)
 		cookie.Name = "refreshToken"
 		cookie.Value = refreshToken
-		cookie.Expires = time.Now().Add(7 * 24 * time.Hour)
+		cookie.Expires = session.ExpiresAt
 		cookie.HttpOnly = true
-		cookie.Secure = true                         // Только по HTTPS
-		cookie.SameSite = http.SameSiteStrictMode    // Защита от CSRF
-		cookie.Path = "/api/auth/refresh"            // Только для эндпоинта обновления
+		cookie.Secure = true                      // Только по HTTPS
+		cookie.SameSite = http.SameSiteStrictMode // Защита от CSRF
+		cookie.Path = "/api/auth/refresh"         // Только для эндпоинта обновления
 		c.SetCookie(cookie)
 
 		resp := TokenResponse{
@@ -97,15 +101,24 @@ func RegisterAuthHandlers(e *echo.Group, cfg *config.Config) {
 			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "no refresh token"})
 		}
 
-		claims, err := auth.ValidateToken(cookie.Value, cfg.JWTSecret)
+		_, err = auth.ValidateToken(cookie.Value, cfg.JWTSecret)
 		if err != nil {
 			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "invalid refresh token"})
 		}
 
-		// Проверка в базе (если мы храним его там)
-		var admin models.Admin
-		if err := db.DB.Where("username = ? AND token = ?", claims.Username, cookie.Value).First(&admin).Error; err != nil {
+		// Проверка в таблице сессий
+		var session models.Session
+		if err := db.DB.Where("refresh_token = ?", cookie.Value).First(&session).Error; err != nil {
 			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "session expired or revoked"})
+		}
+
+		// Ротация: удаляем старую сессию
+		db.DB.Delete(&session)
+
+		// Проверяем, существует ли еще пользователь и активен ли он
+		var admin models.Admin
+		if err := db.DB.Where("username = ? AND active = ?", session.Username, true).First(&admin).Error; err != nil {
+			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "user deactivated"})
 		}
 
 		// Проверка срока пароля
@@ -114,16 +127,48 @@ func RegisterAuthHandlers(e *echo.Group, cfg *config.Config) {
 			mustChange = true
 		}
 
-		// Генерация нового Access Token
+		// Генерация нового Access Token и нового Refresh Token
 		newAccessToken, err := auth.GenerateAccessToken(admin.Username, admin.SuperAdmin, mustChange, cfg.JWTSecret)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "could not generate access token"})
 		}
 
+		newRefreshToken, err := auth.GenerateRefreshToken(admin.Username, cfg.JWTSecret)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "could not generate refresh token"})
+		}
+
+		// Сохраняем новую сессию
+		newSession := models.Session{
+			Username:     admin.Username,
+			RefreshToken: newRefreshToken,
+			UserAgent:    c.Request().UserAgent(),
+			IP:           c.RealIP(),
+			ExpiresAt:    time.Now().Add(7 * 24 * time.Hour),
+		}
+		db.DB.Create(&newSession)
+
+		// Обновляем куку
+		newCookie := new(http.Cookie)
+		newCookie.Name = "refreshToken"
+		newCookie.Value = newRefreshToken
+		newCookie.Expires = newSession.ExpiresAt
+		newCookie.HttpOnly = true
+		newCookie.Secure = true
+		newCookie.SameSite = http.SameSiteStrictMode
+		newCookie.Path = "/api/auth/refresh"
+		c.SetCookie(newCookie)
+
 		return c.JSON(http.StatusOK, map[string]string{"access_token": newAccessToken})
 	})
 
 	e.POST("/logout", func(c echo.Context) error {
+		// Удаляем сессию из базы
+		cookieToken, err := c.Cookie("refreshToken")
+		if err == nil && cookieToken.Value != "" {
+			db.DB.Where("refresh_token = ?", cookieToken.Value).Delete(&models.Session{})
+		}
+
 		// Очистка куки (те же флаги, что при установке)
 		cookie := new(http.Cookie)
 		cookie.Name = "refreshToken"

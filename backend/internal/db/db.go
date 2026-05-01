@@ -92,6 +92,7 @@ func InitDB(dsn string) {
 		&models.AppConfig{},
 		&models.Vacation{},
 		&models.SieveRule{},
+		&models.Session{},
 	)
 	if err != nil {
 		log.Fatalf("failed to migrate database: %v", err)

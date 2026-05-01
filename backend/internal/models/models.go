@@ -162,3 +162,16 @@ type SieveRule struct {
 }
 
 func (SieveRule) TableName() string { return "ma_sieve_rules" }
+
+// Session представляет таблицу ma_sessions для хранения сессий (refresh tokens)
+type Session struct {
+	ID           uint      `gorm:"primaryKey;autoIncrement;column:id" json:"id"`
+	Username     string    `gorm:"column:username;size:255;index" json:"username"`
+	RefreshToken string    `gorm:"column:refresh_token;type:text" json:"-"`
+	UserAgent    string    `gorm:"column:user_agent;size:255" json:"user_agent"`
+	IP           string    `gorm:"column:ip;size:50" json:"ip"`
+	ExpiresAt    time.Time `gorm:"column:expires_at" json:"expires_at"`
+	CreatedAt    time.Time `gorm:"column:created_at;autoCreateTime" json:"created_at"`
+}
+
+func (Session) TableName() string { return "ma_sessions" }
