@@ -1,11 +1,11 @@
 #!/bin/bash
 
 # ==========================================================================
-#  __  __       _ _        _         _ min
-# |  \/  |     (_) |      / \   _ __| |__
-# | |\/| | __ _| | |     / _ \ | '__| '_ \
-# | |  | |/ _` | | |    / ___ \| |  | |_) |
-# |_|  |_|\__,_|_|_|   /_/   \_\_|  |_.__/
+#  __  __       _ _      _       _           _
+# |  \/  | __ _(_) |    / \   __| |_ __ ___ (_)_ __
+# | |\/| |/ _` | | |   / _ \ / _` | '_ ` _ \| | '_ \
+# | |  | | (_| | | |  / ___ \ (_| | | | | | | | | | |
+# |_|  |_|\__,_|_|_| /_/   \_\__,_|_| |_| |_|_|_| |_|
 #
 # MailAdmin - Professional Native Installer & Updater
 # ==========================================================================
@@ -17,8 +17,6 @@ set -e
 # --- Configuration ---
 INSTALL_DIR="/opt/mailadmin"
 GITHUB_REPO="https://github.com/kirpicheff/mailadmin.git"
-SERVICE_NAME="mailadmin"
-SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 
 # --- UI Helpers ---
 RED='\033[0;31m'
@@ -75,17 +73,20 @@ build_and_restart() {
     fi
 
     # Service Management
-    info "Configuring and restarting systemd service..."
+    info "Configuring and restarting systemd services..."
     systemctl daemon-reload
-    systemctl restart $SERVICE_NAME
-    ok "Service ${SERVICE_NAME} is now running."
+    systemctl restart mailadmin-agent
+    systemctl restart mailadmin-web
+    ok "Services are now running."
     
-    status=$(systemctl is-active $SERVICE_NAME)
-    if [ "$status" == "active" ]; then
-        ok "MailAdmin is ACTIVE and running."
-    else
-        warn "Service started but status is: $status. Check logs: journalctl -u $SERVICE_NAME"
-    fi
+    for svc in mailadmin-agent mailadmin-web; do
+        status=$(systemctl is-active $svc)
+        if [ "$status" == "active" ]; then
+            ok "$svc is ACTIVE and running."
+        else
+            warn "Service $svc started but status is: $status. Check logs: journalctl -u $svc"
+        fi
+    done
 }
 
 # --- Environment Configuration ---
@@ -127,28 +128,67 @@ EOF
 
 # --- Systemd Setup ---
 setup_service() {
-    if [ ! -f "$SERVICE_FILE" ]; then
-        info "Installing systemd unit file..."
-        cat <<EOF > "$SERVICE_FILE"
+    info "Installing systemd unit files..."
+    
+    # User creation for Privilege Separation
+    if ! id -u mailadmin >/dev/null 2>&1; then
+        info "Creating mailadmin user..."
+        useradd -r -s /bin/false -G adm,mail,dovecot mailadmin || true
+    fi
+    
+    info "Creating socket directory..."
+    mkdir -p /var/run/mailadmin
+    chown root:mailadmin /var/run/mailadmin
+    chmod 770 /var/run/mailadmin
+
+    # Agent Service (Root)
+    cat <<EOF > "/etc/systemd/system/mailadmin-agent.service"
 [Unit]
-Description=MailAdmin Native Backend
-After=network.target mariadb.service mysql.service
+Description=MailAdmin Agent (Privileged)
+After=network.target
 
 [Service]
 Type=simple
 User=root
 WorkingDirectory=$INSTALL_DIR/backend
-ExecStart=$INSTALL_DIR/mailadmin-bin
+ExecStart=$INSTALL_DIR/mailadmin-bin --agent
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    # Web Service (Unprivileged)
+    cat <<EOF > "/etc/systemd/system/mailadmin-web.service"
+[Unit]
+Description=MailAdmin Web (Unprivileged)
+After=network.target mariadb.service mysql.service mailadmin-agent.service
+Requires=mailadmin-agent.service
+
+[Service]
+Type=simple
+User=mailadmin
+WorkingDirectory=$INSTALL_DIR/backend
+ExecStart=$INSTALL_DIR/mailadmin-bin --web
 Restart=always
 EnvironmentFile=$INSTALL_DIR/backend/.env
 
 [Install]
 WantedBy=multi-user.target
 EOF
+
+    systemctl daemon-reload
+    
+    # Disable old single service if it existed
+    if systemctl is-enabled mailadmin >/dev/null 2>&1; then
+        systemctl disable --now mailadmin || true
+        rm -f /etc/systemd/system/mailadmin.service
         systemctl daemon-reload
-        systemctl enable $SERVICE_NAME
-        ok "Systemd service registered."
     fi
+    
+    systemctl enable mailadmin-agent
+    systemctl enable mailadmin-web
+    ok "Systemd services registered."
 }
 
 # --- Main Entry Point ---

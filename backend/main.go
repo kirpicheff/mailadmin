@@ -1,11 +1,13 @@
 package main
 
 import (
+	"flag"
 	"net/http"
 	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/user/mailadmin/internal/agent"
 	"github.com/user/mailadmin/internal/api"
 	"github.com/user/mailadmin/internal/config"
 	"github.com/user/mailadmin/internal/db"
@@ -13,6 +15,19 @@ import (
 )
 
 func main() {
+	isWeb := flag.Bool("web", false, "Run as web node")
+	isAgent := flag.Bool("agent", false, "Run as agent node")
+	flag.Parse()
+
+	_ = isWeb // Игнорируем неиспользуемую переменную, она служит как флаг документации
+
+	if *isAgent {
+		agent.Start()
+		return
+	}
+
+	// По умолчанию или если указан --web запускаем веб-интерфейс
+	
 	// Загружаем конфиг
 	cfg := config.LoadConfig()
 
@@ -114,4 +129,5 @@ func main() {
 	// Запуск сервера
 	e.Logger.Fatal(e.Start(cfg.ListenAddr))
 }
+
 

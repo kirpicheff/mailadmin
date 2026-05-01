@@ -16,7 +16,14 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o mailadmin ./main.go
 
 # === Шаг 3: Итоговый Docker-образ ===
 FROM alpine:3.18
-RUN apk add --no-cache nginx
+RUN apk add --no-cache nginx shadow su-exec
+
+# Создание пользователя для Privilege Separation
+RUN groupadd -r mailadmin && \
+    useradd -r -g mailadmin -s /bin/false -G adm,mail mailadmin && \
+    mkdir -p /var/run/mailadmin && \
+    chown root:mailadmin /var/run/mailadmin && \
+    chmod 770 /var/run/mailadmin
 
 # Настройка Nginx и статики
 COPY docker/nginx.conf /etc/nginx/nginx.conf

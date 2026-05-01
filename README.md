@@ -67,6 +67,9 @@ The system implements strict access control using role segregation. There are tw
 The project was designed with a strong focus on preventing popular web vulnerabilities. Key protection mechanisms:
 - **API Authentication:** Almost all endpoints (except login initialization) are protected by `auth.JWTMiddleware`, preventing unauthorized access (protection against unauthorized use or application crashes due to Nil Pointers).
 - **IDOR Protection:** Every `POST`, `PUT`, or `DELETE` request for a mailbox, alias, Sieve filter, or mailing tool strictly verifies ownership of the target domain via the `domain_admins` database.
+- **Privilege Separation (Agent Architecture):** To minimize the attack surface, the system is split into two processes:
+  - **Agent Node (`mailadmin --agent`):** Runs as `root`, performs privileged tasks (Postfix, Fail2Ban), and listens only on a local Unix socket.
+  - **Web Node (`mailadmin --web`):** Runs as an unprivileged user, handles the API/UI, and communicates with the Agent via IPC.
 
 ---
 
@@ -109,9 +112,13 @@ The backend uses configuration, usually from environment files (ENV) or the `int
 ```bash
 cd backend
 go mod tidy
-go build -o mailadmin.exe ./main.go
-# Start the process
-./mailadmin.exe
+go build -o mailadmin-bin ./main.go
+
+# Start the Agent (as root)
+sudo ./mailadmin-bin --agent &
+
+# Start the Web Node (as unprivileged user)
+./mailadmin-bin --web
 ```
 
 ### Running the Frontend
@@ -203,6 +210,9 @@ For production use, it is recommended to compile the frontend (`npm run build`) 
 Проект спроектирован с упором на предотвращение популярных веб-уязвимостей. Основные механизмы защиты:
 - **Аутентификация API:** Почти все конечные точки (кроме инициализации логина) закрыты `auth.JWTMiddleware`, предотвращая несанкционированный доступ (защита от неавторизованного использования или падения приложения по причине Nil Pointer-ов).
 - **IDOR Protection:** Каждый запрос `POST`, `PUT` или `DELETE` на запись почтового ящика, алиаса, фильтра Sieve или инструмента рассылки строго проверяет владение целевым доменом через базу `domain_admins`.
+- **Разделение привилегий (Agent Architecture):** Для минимизации рисков система разделена на два процесса:
+    - **Agent Node (`mailadmin --agent`):** Работает от `root`, выполняет системные команды (Postfix, Fail2Ban) и слушает только локальный Unix-сокет.
+    - **Web Node (`mailadmin --web`):** Работает от бесправного пользователя, обрабатывает API и UI, взаимодействуя с Агентом через IPC.
 
 ---
 
@@ -245,9 +255,13 @@ cp .env.example .env
 ```bash
 cd backend
 go mod tidy
-go build -o mailadmin.exe ./main.go
-# Запустите процесс
-./mailadmin.exe
+go build -o mailadmin-bin ./main.go
+
+# Запустите Агента (от root)
+sudo ./mailadmin-bin --agent &
+
+# Запустите Веб-узел (от обычного пользователя)
+./mailadmin-bin --web
 ```
 
 ### Запуск Frontend-части

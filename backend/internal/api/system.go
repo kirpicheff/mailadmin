@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -14,10 +16,39 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/user/mailadmin/internal/agent"
 	"github.com/user/mailadmin/internal/audit"
 	"github.com/user/mailadmin/internal/auth"
 	"github.com/user/mailadmin/internal/db"
 )
+
+// sendToAgent отправляет запрос к Unix сокету агента
+func sendToAgent(action agent.ActionType, payload interface{}) error {
+	payloadBytes, _ := json.Marshal(payload)
+	req := agent.AgentRequest{
+		Action:  action,
+		Payload: payloadBytes,
+	}
+	reqBytes, _ := json.Marshal(req)
+
+	client := http.Client{
+		Transport: &http.Transport{
+			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+				return net.Dial("unix", agent.SocketPath)
+			},
+		},
+		Timeout: 10 * time.Second,
+	}
+	resp, err := client.Post("http://unix/", "application/json", bytes.NewReader(reqBytes))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("agent returned %d", resp.StatusCode)
+	}
+	return nil
+}
 
 // SystemStats структура для ответа
 type SystemStats struct {
@@ -142,7 +173,9 @@ func RegisterSystemHandlers(g *echo.Group, secret string) {
 	})
 
 	system.POST("/queue/flush", func(c echo.Context) error {
-		runCmd("postqueue", "-f")
+		if err := sendToAgent(agent.ActionQueueFlush, nil); err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to flush queue"})
+		}
 		claims := c.Get("user").(*auth.Claims)
 		audit.Log(db.DB, claims.Username, "system", "queue flush", "все письма")
 		return c.NoContent(http.StatusNoContent)
@@ -158,10 +191,14 @@ func RegisterSystemHandlers(g *echo.Group, secret string) {
 
 		claims := c.Get("user").(*auth.Claims)
 		if id == "all" {
-			runCmd("postsuper", "-d", "ALL")
+			if err := sendToAgent(agent.ActionQueueDelete, map[string]string{"id": "ALL"}); err != nil {
+				return c.JSON(http.StatusInternalServerError, map[string]string{"error": "agent error"})
+			}
 			audit.Log(db.DB, claims.Username, "system", "queue delete", "ALL")
 		} else {
-			runCmd("postsuper", "-d", id)
+			if err := sendToAgent(agent.ActionQueueDelete, map[string]string{"id": id}); err != nil {
+				return c.JSON(http.StatusInternalServerError, map[string]string{"error": "agent error"})
+			}
 			audit.Log(db.DB, claims.Username, "system", "queue delete", id)
 		}
 		return c.NoContent(http.StatusNoContent)
@@ -258,7 +295,9 @@ func RegisterSystemHandlers(g *echo.Group, secret string) {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid jail name"})
 		}
 
-		runCmd("fail2ban-client", "set", jail, "unbanip", ip)
+		if err := sendToAgent(agent.ActionFail2banUnban, map[string]string{"ip": ip, "jail": jail}); err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "agent error"})
+		}
 
 		// MED-4: аудит разбана IP
 		claims := c.Get("user").(*auth.Claims)
