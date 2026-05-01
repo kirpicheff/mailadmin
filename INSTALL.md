@@ -95,26 +95,64 @@ cd mailadmin
 3. Скомпилируйте приложение:
    ```bash
    go mod tidy
-   go build -o mailadmin ./main.go
+   go build -o mailadmin-bin ./main.go
    ```
 
-4. (Опционально) Настройте системную службу `systemd` для автозапуска:
-   Создайте файл `/etc/systemd/system/mailadmin.service`:
-   ```ini
-   [Unit]
-   Description=MailAdmin Go Backend
-   After=network.target mariadb.service
+4. Настройте системные службы `systemd` для автозапуска. Архитектура MailAdmin предполагает разделение на привилегированного агента и обычный веб-узел.
 
-   [Service]
-   Type=simple
-   WorkingDirectory=/opt/mailadmin/backend
-   ExecStart=/opt/mailadmin/backend/mailadmin
-   Restart=always
-   Environment=PORT=8080
+**Подготовка пользователя и прав:**
+```bash
+# Создание пользователя для веб-узла
+sudo useradd -r -s /bin/false -G adm,mail,dovecot mailadmin
+# Создание директории для IPC-сокета
+sudo mkdir -p /var/run/mailadmin
+sudo chown root:mailadmin /var/run/mailadmin
+sudo chmod 770 /var/run/mailadmin
+```
 
-   [Install]
-   WantedBy=multi-user.target
-   ```
+**Агент (MailAdmin Agent — работает от root):**
+Создайте `/etc/systemd/system/mailadmin-agent.service`:
+```ini
+[Unit]
+Description=MailAdmin Agent (Privileged)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/mailadmin/backend
+ExecStart=/opt/mailadmin/backend/mailadmin-bin --agent
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+**Веб-узел (MailAdmin Web — работает от mailadmin):**
+Создайте `/etc/systemd/system/mailadmin-web.service`:
+```ini
+[Unit]
+Description=MailAdmin Web (Unprivileged)
+After=network.target mariadb.service mailadmin-agent.service
+Requires=mailadmin-agent.service
+
+[Service]
+Type=simple
+User=mailadmin
+WorkingDirectory=/opt/mailadmin/backend
+ExecStart=/opt/mailadmin/backend/mailadmin-bin --web
+Restart=always
+EnvironmentFile=/opt/mailadmin/backend/.env
+
+[Install]
+WantedBy=multi-user.target
+```
+
+После создания файлов выполните:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now mailadmin-agent mailadmin-web
+```
 
 ### Шаг 3. Сборка фронтенда
 1. Перейдите в папку фронтенда:
