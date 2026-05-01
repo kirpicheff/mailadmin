@@ -62,7 +62,7 @@ const fetchHealth = async () => {
 const fetchBannedIPs = async () => {
   try {
     const response = await api.get('/system/fail2ban')
-    bannedIPs.value = response.data
+    bannedIPs.value = response.data || []
     showF2BModal.value = true
   } catch (error) {
     console.error('Failed to fetch banned IPs:', error)
@@ -348,7 +348,7 @@ onUnmounted(() => {
         </div>
 
         <div class="p-0 max-h-[60vh] overflow-y-auto">
-          <table v-if="bannedIPs.length > 0" class="w-full text-left">
+          <table v-if="bannedIPs?.length > 0" class="w-full text-left">
             <thead class="sticky top-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md z-10 border-b border-slate-100 dark:border-slate-800">
               <tr>
                 <th class="px-8 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">{{ t('fail2ban.ip_address') }}</th>

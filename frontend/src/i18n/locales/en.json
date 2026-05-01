@@ -53,7 +53,8 @@
     "description": "Description",
     "name": "Name",
     "password": "Password",
-    "days_short": "d"
+    "days_short": "d",
+    "close": "Close"
   },
   "dashboard": {
     "title": "Dashboard",

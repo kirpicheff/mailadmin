@@ -54,7 +54,8 @@
     "name": "Имя",
     "password": "Пароль",
     "days_short": "дн",
-    "items": "объектов"
+    "items": "объектов",
+    "close": "Закрыть"
   },
   "dashboard": {
     "title": "Дашборд",
