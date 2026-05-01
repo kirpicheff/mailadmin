@@ -68,7 +68,7 @@ The project was designed with a strong focus on preventing popular web vulnerabi
 - **API Authentication:** Almost all endpoints (except login initialization) are protected by `auth.JWTMiddleware`, preventing unauthorized access (protection against unauthorized use or application crashes due to Nil Pointers).
 - **IDOR Protection:** Every `POST`, `PUT`, or `DELETE` request for a mailbox, alias, Sieve filter, or mailing tool strictly verifies ownership of the target domain via the `domain_admins` database.
 - **Privilege Separation (Agent Architecture):** To minimize the attack surface, the system is split into two processes:
-  - **Agent Node (`mailadmin --agent`):** Runs as `root`, performs privileged tasks (Postfix, Fail2Ban), and listens only on a local Unix socket.
+  - **Agent Node (`mailadmin --agent`):** Runs as `root`, performs privileged tasks (Postfix, Fail2Ban), and listens only on a local Unix socket. *Note: In Docker, ensure the image contains the necessary tools (postqueue, fail2ban-client) or mount them from the host.*
   - **Web Node (`mailadmin --web`):** Runs as an unprivileged user, handles the API/UI, and communicates with the Agent via IPC.
 
 ---
@@ -211,7 +211,7 @@ For production use, it is recommended to compile the frontend (`npm run build`) 
 - **Аутентификация API:** Почти все конечные точки (кроме инициализации логина) закрыты `auth.JWTMiddleware`, предотвращая несанкционированный доступ (защита от неавторизованного использования или падения приложения по причине Nil Pointer-ов).
 - **IDOR Protection:** Каждый запрос `POST`, `PUT` или `DELETE` на запись почтового ящика, алиаса, фильтра Sieve или инструмента рассылки строго проверяет владение целевым доменом через базу `domain_admins`.
 - **Разделение привилегий (Agent Architecture):** Для минимизации рисков система разделена на два процесса:
-    - **Agent Node (`mailadmin --agent`):** Работает от `root`, выполняет системные команды (Postfix, Fail2Ban) и слушает только локальный Unix-сокет.
+    - **Agent Node (`mailadmin --agent`):** Работает от `root`, выполняет системные команды (Postfix, Fail2Ban) и слушает только локальный Unix-сокет. *Примечание: При использовании Docker убедитесь, что в образе установлены необходимые утилиты (postqueue, fail2ban-client) или они проброшены с хоста.*
     - **Web Node (`mailadmin --web`):** Работает от бесправного пользователя, обрабатывает API и UI, взаимодействуя с Агентом через IPC.
 
 ---

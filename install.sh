@@ -119,6 +119,7 @@ DB_DSN=$DB_DSN
 JWT_SECRET=$JWT_SECRET
 LISTEN_ADDR=$LISTEN_ADDR
 EOF
+        chown mailadmin:mailadmin "$ENV_FILE" 2>/dev/null || chown mailadmin:mail "$ENV_FILE"
         chmod 600 "$ENV_FILE"
         ok "Environment file created and secured at $ENV_FILE"
     else
@@ -130,16 +131,21 @@ EOF
 setup_service() {
     info "Installing systemd unit files..."
     
-    # User creation for Privilege Separation
+    # User and Group creation for Privilege Separation
+    if ! getent group mailadmin >/dev/null; then
+        info "Creating mailadmin group..."
+        groupadd -r mailadmin
+    fi
+
     if ! id -u mailadmin >/dev/null 2>&1; then
         info "Creating mailadmin user..."
-        useradd -r -s /bin/false -G adm,mail,dovecot mailadmin || true
+        useradd -r -g mailadmin -s /bin/false -G adm,mail,dovecot mailadmin || true
     fi
     
     info "Creating socket directory..."
     mkdir -p /var/run/mailadmin
     chown root:mailadmin /var/run/mailadmin
-    chmod 770 /var/run/mailadmin
+    chmod 775 /var/run/mailadmin # Группа может заходить в директорию
 
     # Agent Service (Root)
     cat <<EOF > "/etc/systemd/system/mailadmin-agent.service"
