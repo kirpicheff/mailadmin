@@ -33,7 +33,7 @@ func RegisterAliasHandlers(g *echo.Group, secret string) {
 		offset := (page - 1) * limit
 
 		claims := c.Get("user").(*auth.Claims)
-		dbQuery := db.DB.Model(&models.Alias{})
+		dbQuery := db.DB.Model(&models.Alias{}).Where("address != goto")
 
 		if !claims.SuperAdmin {
 			dbQuery = dbQuery.Where("domain IN (?)", db.DB.Table("domain_admins").Select("domain").Where("username = ?", claims.Username))

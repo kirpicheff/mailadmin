@@ -176,7 +176,7 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 
 		tx.Commit()
 
-		audit.Log(db.DB, claims.Username, box.Domain, "create mailbox + alias", box.Username)
+		audit.Log(db.DB, claims.Username, box.Domain, "create mailbox", box.Username)
 
 		return c.JSON(http.StatusCreated, box)
 	})
@@ -273,7 +273,7 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 
 		tx.Commit()
 
-		audit.Log(db.DB, claims.Username, box.Domain, "delete mailbox + alias + vacation", username)
+		audit.Log(db.DB, claims.Username, box.Domain, "delete mailbox", username)
 
 		return c.NoContent(http.StatusNoContent)
 	})

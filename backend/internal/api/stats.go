@@ -37,8 +37,8 @@ func RegisterStatsHandlers(g *echo.Group, secret string) {
 		// Считаем сумму квот, исключая 0 (безлимит), так как они искажают процент заполнения
 		mQuery.Select("COALESCE(SUM(quota), 0)").Where("quota > 0").Scan(&quotaLimit)
 
-		// 3. Считаем алиасы
-		aQuery := db.DB.Model(&models.Alias{})
+		// 3. Считаем алиасы (исключаем алиасы на самого себя, которые создаются для ящиков)
+		aQuery := db.DB.Model(&models.Alias{}).Where("address != goto")
 		if !claims.SuperAdmin {
 			aQuery = aQuery.Where("domain IN (?)", db.DB.Table("domain_admins").Select("domain").Where("username = ?", claims.Username))
 		}

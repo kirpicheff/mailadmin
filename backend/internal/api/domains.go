@@ -57,8 +57,8 @@ func RegisterDomainHandlers(g *echo.Group, secret string) {
 
 			// Считаем ящики
 			db.DB.Model(&models.Mailbox{}).Where("domain = ?", d.Domain).Count(&mCount)
-			// Считаем алиасы
-			db.DB.Model(&models.Alias{}).Where("domain = ?", d.Domain).Count(&aCount)
+			// Считаем алиасы (исключаем алиасы на самого себя)
+			db.DB.Model(&models.Alias{}).Where("domain = ? AND address != goto", d.Domain).Count(&aCount)
 			// Считаем занятую квоту (сумма всех ящиков)
 			db.DB.Model(&models.Mailbox{}).Where("domain = ?", d.Domain).Select("SUM(quota)").Scan(&qUsed)
 

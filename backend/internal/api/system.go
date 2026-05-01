@@ -477,14 +477,13 @@ func getSystemStats() SystemStats {
 		}
 	}
 
-	// 6. DB Threads (mysqladmin status)
-	dbOut := runCmd("mysqladmin", "status")
-	if dbOut != "" {
-		re := regexp.MustCompile(`Threads: (\d+)`)
-		match := re.FindStringSubmatch(dbOut)
-		if len(match) > 1 {
-			s.DBThreads, _ = strconv.Atoi(match[1])
-		}
+	// 6. DB Threads (используем SQL-запрос вместо mysqladmin для получения данных со всего сервера)
+	var dbStatus struct {
+		VariableName string `gorm:"column:Variable_name"`
+		Value        string `gorm:"column:Value"`
+	}
+	if err := db.DB.Raw("SHOW STATUS LIKE 'Threads_connected'").Scan(&dbStatus).Error; err == nil {
+		s.DBThreads, _ = strconv.Atoi(dbStatus.Value)
 	}
 
 	// 7. Redis Memory
