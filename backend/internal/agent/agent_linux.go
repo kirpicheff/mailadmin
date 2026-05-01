@@ -4,8 +4,29 @@ package agent
 import (
 	"fmt"
 	"net"
+	"os"
+	"os/user"
+	"strconv"
 	"syscall"
 )
+
+func SetSocketPermissions(path string) error {
+	// Устанавливаем права 0600 (только владелец сможет читать/писать)
+	if err := os.Chmod(path, 0600); err != nil {
+		return err
+	}
+
+	// Ищем пользователя mailadmin
+	u, err := user.Lookup("mailadmin")
+	if err == nil {
+		uid, _ := strconv.Atoi(u.Uid)
+		// Меняем владельца файла на mailadmin
+		if err := os.Chown(path, uid, -1); err != nil {
+			return fmt.Errorf("failed to chown socket to user mailadmin: %v", err)
+		}
+	}
+	return nil
+}
 
 func checkPeerCred(conn net.Conn) error {
 	unixConn, ok := conn.(*net.UnixConn)

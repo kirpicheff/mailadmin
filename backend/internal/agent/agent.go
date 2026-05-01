@@ -17,11 +17,11 @@ const LogPath = "/var/log/mailadmin-agent.log"
 type ActionType string
 
 const (
-	ActionFail2banUnban ActionType = "fail2ban_unban"
-	ActionFail2banBan   ActionType = "fail2ban_ban"
+	ActionFail2banUnban  ActionType = "fail2ban_unban"
+	ActionFail2banBan    ActionType = "fail2ban_ban"
 	ActionFail2banStatus ActionType = "fail2ban_status"
-	ActionQueueDelete   ActionType = "queue_delete"
-	ActionQueueFlush    ActionType = "queue_flush"
+	ActionQueueDelete    ActionType = "queue_delete"
+	ActionQueueFlush     ActionType = "queue_flush"
 	ActionQueueStatus    ActionType = "queue_status"
 )
 
@@ -67,9 +67,9 @@ func Start() {
 	}
 	defer listener.Close()
 
-	// Устанавливаем права (обеспечиваем доступ только группе mailadmin, владелец root)
-	if err := os.Chmod(SocketPath, 0660); err != nil {
-		logger.Fatalf("Failed to chmod socket: %v", err)
+	// Устанавливаем права и владельца (чтобы веб-узел mailadmin мог писать в сокет)
+	if err := SetSocketPermissions(SocketPath); err != nil {
+		logger.Printf("Warning: failed to set socket permissions: %v", err)
 	}
 
 	// Мы не делаем здесь chown, так как пользователя mailadmin может не быть на машине разработчика (Windows).
@@ -221,7 +221,7 @@ func Start() {
 	// В идеале мы должны проверять SO_PEERCRED при Accept, но net/http не предоставляет к этому легкого доступа.
 	// Для продакшена можно использовать кастомную обертку над слушателем.
 	// В рамках этого рефакторинга права на файл (0660 root:mailadmin) обеспечивают основную защиту.
-	
+
 	logger.Printf("Agent listening on %s", SocketPath)
 	if err := server.Serve(listener); err != nil {
 		logger.Fatalf("Server error: %v", err)
