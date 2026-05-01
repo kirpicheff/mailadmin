@@ -22,8 +22,8 @@ import (
 	"github.com/user/mailadmin/internal/db"
 )
 
-// sendToAgent отправляет запрос к Unix сокету агента
-func sendToAgent(action agent.ActionType, payload interface{}) error {
+// sendToAgent отправляет запрос к Unix сокету агента и возвращает ответ
+func sendToAgent(action agent.ActionType, payload interface{}, queryParams map[string]string) (string, error) {
 	payloadBytes, _ := json.Marshal(payload)
 	req := agent.AgentRequest{
 		Action:  action,
@@ -39,15 +39,28 @@ func sendToAgent(action agent.ActionType, payload interface{}) error {
 		},
 		Timeout: 10 * time.Second,
 	}
-	resp, err := client.Post("http://unix/", "application/json", bytes.NewReader(reqBytes))
+
+	url := "http://unix/"
+	if len(queryParams) > 0 {
+		url += "?"
+		for k, v := range queryParams {
+			url += fmt.Sprintf("%s=%s&", k, v)
+		}
+	}
+
+	resp, err := client.Post(url, "application/json", bytes.NewReader(reqBytes))
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer resp.Body.Close()
+
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(resp.Body)
+	
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("agent returned %d", resp.StatusCode)
+		return buf.String(), fmt.Errorf("agent returned %d", resp.StatusCode)
 	}
-	return nil
+	return buf.String(), nil
 }
 
 // SystemStats структура для ответа
@@ -96,8 +109,8 @@ var validIP = regexp.MustCompile(`^(\d{1,3}\.){3}\d{1,3}$|^[0-9a-fA-F:]+$`)
 var validJail = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 
 func getFullQueue() []QueueItem {
-	out := runCmd("postqueue", "-p")
-	if out == "" || strings.Contains(out, "Mail queue is empty") {
+	out, err := sendToAgent(agent.ActionQueueStatus, nil, nil)
+	if err != nil || out == "" || strings.Contains(out, "Mail queue is empty") {
 		return []QueueItem{}
 	}
 
@@ -173,7 +186,7 @@ func RegisterSystemHandlers(g *echo.Group, secret string) {
 	})
 
 	system.POST("/queue/flush", func(c echo.Context) error {
-		if err := sendToAgent(agent.ActionQueueFlush, nil); err != nil {
+		if _, err := sendToAgent(agent.ActionQueueFlush, nil, nil); err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to flush queue"})
 		}
 		claims := c.Get("user").(*auth.Claims)
@@ -191,12 +204,12 @@ func RegisterSystemHandlers(g *echo.Group, secret string) {
 
 		claims := c.Get("user").(*auth.Claims)
 		if id == "all" {
-			if err := sendToAgent(agent.ActionQueueDelete, map[string]string{"id": "ALL"}); err != nil {
+			if _, err := sendToAgent(agent.ActionQueueDelete, map[string]string{"id": "ALL"}, nil); err != nil {
 				return c.JSON(http.StatusInternalServerError, map[string]string{"error": "agent error"})
 			}
 			audit.Log(db.DB, claims.Username, "system", "queue delete", "ALL")
 		} else {
-			if err := sendToAgent(agent.ActionQueueDelete, map[string]string{"id": id}); err != nil {
+			if _, err := sendToAgent(agent.ActionQueueDelete, map[string]string{"id": id}, nil); err != nil {
 				return c.JSON(http.StatusInternalServerError, map[string]string{"error": "agent error"})
 			}
 			audit.Log(db.DB, claims.Username, "system", "queue delete", id)
@@ -248,7 +261,10 @@ func RegisterSystemHandlers(g *echo.Group, secret string) {
 
 	// Fail2Ban управление
 	system.GET("/fail2ban", func(c echo.Context) error {
-		out := runCmd("fail2ban-client", "status")
+		out, err := sendToAgent(agent.ActionFail2banStatus, nil, nil)
+		if err != nil {
+			return c.JSON(http.StatusOK, []interface{}{})
+		}
 		reJails := regexp.MustCompile(`Jail list:\s+(.+)`)
 		match := reJails.FindStringSubmatch(out)
 		if len(match) < 2 {
@@ -267,7 +283,10 @@ func RegisterSystemHandlers(g *echo.Group, secret string) {
 			if jail == "" {
 				continue
 			}
-			jOut := runCmd("fail2ban-client", "status", jail)
+			jOut, err := sendToAgent(agent.ActionFail2banStatus, nil, map[string]string{"jail": jail})
+			if err != nil {
+				continue
+			}
 			reIPs := regexp.MustCompile(`Banned IP list:\s+(.+)`)
 			iMatch := reIPs.FindStringSubmatch(jOut)
 			if len(iMatch) >= 2 {
@@ -295,7 +314,7 @@ func RegisterSystemHandlers(g *echo.Group, secret string) {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid jail name"})
 		}
 
-		if err := sendToAgent(agent.ActionFail2banUnban, map[string]string{"ip": ip, "jail": jail}); err != nil {
+		if _, err := sendToAgent(agent.ActionFail2banUnban, map[string]string{"ip": ip, "jail": jail}, nil); err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "agent error"})
 		}
 
@@ -491,9 +510,9 @@ func getSystemStats() SystemStats {
 		}
 	}
 
-	// 4. Mail Queue (postqueue -p)
-	queueOut := runCmd("postqueue", "-p")
-	if queueOut != "" {
+	// 4. Mail Queue (через агент)
+	queueOut, err := sendToAgent(agent.ActionQueueStatus, nil, nil)
+	if err == nil && queueOut != "" {
 		lines := strings.Split(queueOut, "\n")
 		lastLine := lines[len(lines)-1]
 		if strings.Contains(lastLine, "Mail queue is empty") {
@@ -535,25 +554,28 @@ func getSystemStats() SystemStats {
 		}
 	}
 
-	// 8. Fail2Ban
-	f2bStatus := runCmd("fail2ban-client", "status")
-	reJails := regexp.MustCompile(`Jail list:\s+(.+)`)
-	mJails := reJails.FindStringSubmatch(f2bStatus)
-	if len(mJails) >= 2 {
-		jails := strings.Split(mJails[1], ",")
-		totalBanned := 0
-		for _, j := range jails {
-			j = strings.Trim(strings.TrimSpace(j), ",")
-			if j == "" { continue }
-			jOut := runCmd("fail2ban-client", "status", j)
-			reBanned := regexp.MustCompile(`Currently banned:\s+(\d+)`)
-			mBanned := reBanned.FindStringSubmatch(jOut)
-			if len(mBanned) >= 2 {
-				count, _ := strconv.Atoi(mBanned[1])
-				totalBanned += count
+	// 8. Fail2Ban (через агент)
+	f2bStatus, err := sendToAgent(agent.ActionFail2banStatus, nil, nil)
+	if err == nil && f2bStatus != "" {
+		reJails := regexp.MustCompile(`Jail list:\s+(.+)`)
+		mJails := reJails.FindStringSubmatch(f2bStatus)
+		if len(mJails) >= 2 {
+			jails := strings.Split(mJails[1], ",")
+			totalBanned := 0
+			for _, j := range jails {
+				j = strings.Trim(strings.TrimSpace(j), ",")
+				if j == "" { continue }
+				jOut, err := sendToAgent(agent.ActionFail2banStatus, nil, map[string]string{"jail": j})
+				if err != nil { continue }
+				reBanned := regexp.MustCompile(`Currently banned:\s+(\d+)`)
+				mBanned := reBanned.FindStringSubmatch(jOut)
+				if len(mBanned) >= 2 {
+					count, _ := strconv.Atoi(mBanned[1])
+					totalBanned += count
+				}
 			}
+			s.F2BCount = totalBanned
 		}
-		s.F2BCount = totalBanned
 	}
 
 	// 9. Supervisor Services

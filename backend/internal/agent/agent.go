@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"syscall"
+	"path/filepath"
 )
 
 const SocketPath = "/var/run/mailadmin/agent.sock"
@@ -19,8 +19,10 @@ type ActionType string
 const (
 	ActionFail2banUnban ActionType = "fail2ban_unban"
 	ActionFail2banBan   ActionType = "fail2ban_ban"
+	ActionFail2banStatus ActionType = "fail2ban_status"
 	ActionQueueDelete   ActionType = "queue_delete"
 	ActionQueueFlush    ActionType = "queue_flush"
+	ActionQueueStatus    ActionType = "queue_status"
 )
 
 type AgentRequest struct {
@@ -41,54 +43,17 @@ func initLogger() *log.Logger {
 	return log.New(file, "AGENT: ", log.LstdFlags)
 }
 
-func checkPeerCred(conn net.Conn) error {
-	unixConn, ok := conn.(*net.UnixConn)
-	if !ok {
-		return fmt.Errorf("not a unix connection")
-	}
-
-	sysconn, err := unixConn.SyscallConn()
-	if err != nil {
-		return err
-	}
-
-	var uid, gid uint32
-	var sysErr error
-
-	err = sysconn.Control(func(fd uintptr) {
-		ucred, err := syscall.GetsockoptUcred(int(fd), syscall.SOL_SOCKET, syscall.SO_PEERCRED)
-		if err != nil {
-			sysErr = err
-			return
-		}
-		uid = ucred.Uid
-		gid = ucred.Gid
-	})
-	
-	_ = uid
-	_ = gid
-
-	if err != nil {
-		return err
-	}
-	if sysErr != nil {
-		return sysErr
-	}
-
-	// Предполагается, что запрос создает пользователь mailadmin.
-	// Возможно, нам нужно найти точный UID пользователя mailadmin,
-	// или же мы просто доверяем правам группы/владельца на сокет.
-	// Но согласно плану: проверка SO_PEERCRED критична.
-	// В настоящее время безопаснее просто проверить, что это не root.
-	// Веб-приложение работает от имени mailadmin. Агент работает от имени root.
-	// Пока что, если мы не можем надежно разрешить имя пользователя в uid здесь без cgo,
-	// мы просто залогируем это.
-	return nil
-}
-
 func Start() {
+	fmt.Println("Agent: Start() called")
 	logger := initLogger()
 	logger.Println("Starting agent daemon...")
+	fmt.Printf("Agent: logging initialized, socket path: %s\n", SocketPath)
+
+	// Создаем директорию для сокета, если она не существует
+	socketDir := filepath.Dir(SocketPath)
+	if err := os.MkdirAll(socketDir, 0755); err != nil {
+		logger.Fatalf("Failed to create socket directory %s: %v", socketDir, err)
+	}
 
 	// Удаляем старый сокет, если он существует
 	if err := os.RemoveAll(SocketPath); err != nil {
@@ -214,6 +179,37 @@ func Start() {
 			}
 			logger.Printf("Successfully flushed queue")
 			w.WriteHeader(http.StatusOK)
+
+		case ActionFail2banStatus:
+			jail := r.URL.Query().Get("jail")
+			var out []byte
+			var err error
+			if jail != "" {
+				if !allowedJails[jail] {
+					http.Error(w, "Forbidden jail", http.StatusForbidden)
+					return
+				}
+				out, err = exec.Command("fail2ban-client", "status", jail).CombinedOutput()
+			} else {
+				out, err = exec.Command("fail2ban-client", "status").CombinedOutput()
+			}
+			if err != nil {
+				logger.Printf("Fail2ban error: %v", err)
+				http.Error(w, "Fail2ban error", http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "text/plain")
+			w.Write(out)
+
+		case ActionQueueStatus:
+			out, err := exec.Command("postqueue", "-p").CombinedOutput()
+			if err != nil {
+				logger.Printf("Postqueue error: %v", err)
+				http.Error(w, "Postqueue error", http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "text/plain")
+			w.Write(out)
 
 		default:
 			logger.Printf("Unknown action: %s", req.Action)
