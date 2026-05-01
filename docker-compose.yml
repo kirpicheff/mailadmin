@@ -8,9 +8,9 @@ services:
     ports:
       - "8081:80" # Внешний порт можно поменять на любой свободный
     environment:
-      - DB_DSN=postfix:password@tcp(127.0.0.1:3306)/postfix?charset=utf8mb4&parseTime=True&loc=Local
-      - JWT_SECRET=your_secure_random_jwt_secret_key_here
-      - LISTEN_ADDR=:8080
+      - DB_DSN=${DB_DSN:-postfix:password@tcp(127.0.0.1:3306)/postfix?charset=utf8mb4&parseTime=True&loc=Local}
+      - JWT_SECRET=${JWT_SECRET:-your_secure_random_jwt_secret_key_here}
+      - LISTEN_ADDR=${LISTEN_ADDR:-:8080}
     volumes:
       # Проброс логов для модуля "Логи сервера"
       - /var/log/mail.log:/var/log/mail.log:ro
