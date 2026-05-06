@@ -95,7 +95,7 @@ type QueueItem struct {
 	Size      int      `json:"size"`
 	Arrival   string   `json:"arrival"`
 	Sender    string   `json:"sender"`
-	Recipient []string `json:"recipients"`
+	Recipient []string `json:"recipient"`
 	Reason    string   `json:"reason"`
 }
 
