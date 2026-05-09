@@ -164,7 +164,7 @@ onUnmounted(() => {
         <!-- SSL Сертификат -->
         <div class="health-card">
           <div class="flex justify-between mb-2">
-            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">SSL Сертификат</span>
+            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('system.ssl') }}</span>
           </div>
           <div class="text-2xl font-black mb-3" :class="health.ssl_days < 10 ? 'text-red-500' : 'text-slate-900 dark:text-white'">{{ health.ssl_days }}</div>
           <p class="text-[9px] font-bold text-slate-400 uppercase">{{ t('system.ssl_days') }}</p>
@@ -173,44 +173,44 @@ onUnmounted(() => {
         <!-- Средняя нагрузка -->
         <div class="health-card">
           <div class="flex justify-between mb-2">
-            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Средняя нагрузка</span>
+            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('system.load_avg') }}</span>
           </div>
           <div class="text-2xl font-black mb-3 text-slate-900 dark:text-white">{{ health.load }}</div>
-          <p class="text-[9px] font-bold text-slate-400 uppercase">Нагрузка на CPU (1 мин)</p>
+          <p class="text-[9px] font-bold text-slate-400 uppercase">{{ t('system.load_cpu_hint') }}</p>
         </div>
 
         <!-- Защита Fail2Ban -->
         <div class="health-card cursor-pointer hover:border-amber-500/50 group/f2b" @click="fetchBannedIPs">
           <div class="flex justify-between mb-2">
-            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest group-hover/f2b:text-amber-500 transition-colors">Защита Fail2Ban</span>
+            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest group-hover/f2b:text-amber-500 transition-colors">{{ t('system.f2b') }}</span>
             <svg class="w-3 h-3 text-slate-300 group-hover/f2b:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7" /></svg>
           </div>
           <div class="text-2xl font-black mb-3" :class="health.f2b_count > 0 ? 'text-amber-500' : 'text-slate-900 dark:text-white'">{{ health.f2b_count }}</div>
-          <p class="text-[9px] font-bold text-slate-400 uppercase">Забанено IP</p>
+          <p class="text-[9px] font-bold text-slate-400 uppercase">{{ t('system.banned_ip') }}</p>
         </div>
 
         <!-- Очередь писем -->
         <div class="health-card">
           <div class="flex justify-between mb-2">
-            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Очередь писем</span>
+            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('system.queue') }}</span>
           </div>
           <div class="text-2xl font-black mb-3 text-slate-900 dark:text-white">{{ health.queue }}</div>
-          <p class="text-[9px] font-bold text-slate-400 uppercase">Писем в очереди Postfix</p>
+          <p class="text-[9px] font-bold text-slate-400 uppercase">{{ t('system.mail_queue_hint') }}</p>
         </div>
 
         <!-- IMAP Сессии -->
         <div class="health-card">
           <div class="flex justify-between mb-2">
-            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">IMAP Сессии</span>
+            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('system.imap') }}</span>
           </div>
           <div class="text-2xl font-black mb-3 text-slate-900 dark:text-white">{{ health.imap_sessions }}</div>
-          <p class="text-[9px] font-bold text-slate-400 uppercase">Активные подключения</p>
+          <p class="text-[9px] font-bold text-slate-400 uppercase">{{ t('system.active_connections') }}</p>
         </div>
 
         <!-- БД & Redis -->
         <div class="health-card">
           <div class="flex justify-between mb-2">
-            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">БД & Redis</span>
+            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('system.db_redis') }}</span>
           </div>
           <div class="flex items-baseline gap-2 mb-3">
             <span class="text-2xl font-black text-slate-900 dark:text-white">{{ health.db_threads }}</span>
@@ -219,7 +219,7 @@ onUnmounted(() => {
             <span class="text-2xl font-black text-slate-900 dark:text-white">{{ health.redis_memory }}</span>
             <span class="text-[10px] text-slate-400 font-bold uppercase">RDS</span>
           </div>
-          <p class="text-[9px] font-bold text-slate-400 uppercase">Потоки БД и память Redis</p>
+          <p class="text-[9px] font-bold text-slate-400 uppercase">{{ t('system.db_redis_hint') }}</p>
         </div>
       </div>
 
@@ -380,8 +380,7 @@ onUnmounted(() => {
             <div class="w-20 h-20 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-500 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-emerald-500/10 rotate-3 group-hover:rotate-0 transition-transform">
               <svg class="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04M12 21.056c1.54 0 3.024-.317 4.382-.886L12.038 12 7.634 20.17A11.947 11.947 0 0112 21.056z" /></svg>
             </div>
-            <p class="text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase">{{ t('fail2ban.empty') }}</p>
-            <p class="text-sm text-slate-500 font-medium mt-2">Сервер в безопасности, активных угроз не обнаружено</p>
+            <p class="text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase">{{ t('fail2ban.safe_status') }}</p>
           </div>
         </div>
 
