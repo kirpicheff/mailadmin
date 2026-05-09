@@ -287,7 +287,7 @@ func RegisterSystemHandlers(g *echo.Group, secret string) {
 			if err != nil {
 				continue
 			}
-			reIPs := regexp.MustCompile(`Banned IP list:[\s\t]+(.+)`)
+			reIPs := regexp.MustCompile(`(?i)banned ip list:[\s\t]+(.+)`)
 			iMatch := reIPs.FindStringSubmatch(jOut)
 			if len(iMatch) >= 2 {
 				ips := strings.Fields(iMatch[1])
@@ -571,7 +571,7 @@ func getSystemStats() SystemStats {
 				if j == "" { continue }
 				jOut, err := sendToAgent(agent.ActionFail2banStatus, nil, map[string]string{"jail": j})
 				if err != nil { continue }
-				reBanned := regexp.MustCompile(`Currently banned:[\s\t]+(\d+)`)
+				reBanned := regexp.MustCompile(`(?i)banned:[\s\t]+(\d+)`)
 				mBanned := reBanned.FindStringSubmatch(jOut)
 				if len(mBanned) >= 2 {
 					count, _ := strconv.Atoi(mBanned[1])
