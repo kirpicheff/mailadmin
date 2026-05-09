@@ -560,6 +560,12 @@ func getSystemStats() SystemStats {
 
 	// 8. Fail2Ban (через агент)
 	f2bStatus, err := sendToAgent(agent.ActionFail2banStatus, nil, nil)
+	if err != nil {
+		fmt.Printf("[SYSTEM] Fail2ban global error: %v\n", err)
+	} else if f2bStatus == "" {
+		fmt.Printf("[SYSTEM] Fail2ban global status is EMPTY\n")
+	}
+
 	if err == nil && f2bStatus != "" {
 		reJails := regexp.MustCompile(`Jail list:[\s\t]+(.+)`)
 		mJails := reJails.FindStringSubmatch(f2bStatus)
@@ -570,7 +576,10 @@ func getSystemStats() SystemStats {
 				j = strings.Trim(strings.TrimSpace(j), ",")
 				if j == "" { continue }
 				jOut, err := sendToAgent(agent.ActionFail2banStatus, nil, map[string]string{"jail": j})
-				if err != nil { continue }
+				if err != nil {
+					fmt.Printf("[SYSTEM] Fail2ban jail %s error: %v\n", j, err)
+					continue
+				}
 				reBanned := regexp.MustCompile(`(?i)banned:[\s\t]+(\d+)`)
 				mBanned := reBanned.FindStringSubmatch(jOut)
 				if len(mBanned) >= 2 {

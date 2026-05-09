@@ -3,6 +3,7 @@ package agent
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -33,8 +34,17 @@ type AgentRequest struct {
 	Payload json.RawMessage `json:"payload"`
 }
 
-var allowedJails = map[string]bool{
-	"sshd": true, "postfix": true, "dovecot": true, "sieve": true, "roundcube": true,
+// isAllowedJail проверяет, что имя jail состоит только из безопасных символов
+func isAllowedJail(name string) bool {
+	if name == "" {
+		return false
+	}
+	for _, r := range name {
+		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '_') {
+			return false
+		}
+	}
+	return true
 }
 
 func initLogger() *log.Logger {
@@ -43,7 +53,9 @@ func initLogger() *log.Logger {
 		log.Printf("Cannot open audit log file %s: %v. Logging to stdout only.", LogPath, err)
 		return log.New(os.Stdout, "AGENT: ", log.LstdFlags)
 	}
-	return log.New(file, "AGENT: ", log.LstdFlags)
+	// Пишем и в файл, и в stdout (чтобы логи попадали в Supervisor)
+	multi := io.MultiWriter(file, os.Stdout)
+	return log.New(multi, "AGENT: ", log.LstdFlags)
 }
 
 func Start() {
@@ -125,7 +137,7 @@ func Start() {
 				http.Error(w, "Invalid IP", http.StatusBadRequest)
 				return
 			}
-			if !allowedJails[p.Jail] {
+			if !isAllowedJail(p.Jail) {
 				logger.Printf("Disallowed jail: %s", p.Jail)
 				http.Error(w, "Forbidden jail", http.StatusForbidden)
 				return
@@ -153,7 +165,7 @@ func Start() {
 				http.Error(w, "Invalid IP", http.StatusBadRequest)
 				return
 			}
-			if !allowedJails[p.Jail] {
+			if !isAllowedJail(p.Jail) {
 				http.Error(w, "Forbidden jail", http.StatusForbidden)
 				return
 			}
@@ -213,7 +225,8 @@ func Start() {
 			var out []byte
 			var err error
 			if jail != "" {
-				if !allowedJails[jail] {
+				if !isAllowedJail(jail) {
+					logger.Printf("DIAGNOSTIC: Jail '%s' is NOT allowed", jail)
 					http.Error(w, "Forbidden jail", http.StatusForbidden)
 					return
 				}
