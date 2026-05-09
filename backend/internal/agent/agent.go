@@ -23,6 +23,8 @@ const (
 	ActionQueueDelete    ActionType = "queue_delete"
 	ActionQueueFlush     ActionType = "queue_flush"
 	ActionQueueStatus    ActionType = "queue_status"
+	ActionImapStatus     ActionType = "imap_status"
+	ActionPing           ActionType = "ping"
 )
 
 type AgentRequest struct {
@@ -92,6 +94,10 @@ func Start() {
 		logger.Printf("Received action: %s", req.Action)
 
 		switch req.Action {
+		case ActionPing:
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("pong"))
+
 		case ActionFail2banUnban:
 			var p struct {
 				IP   string `json:"ip"`
@@ -112,7 +118,7 @@ func Start() {
 				http.Error(w, "Forbidden jail", http.StatusForbidden)
 				return
 			}
-			out, err := exec.Command("fail2ban-client", "set", p.Jail, "unbanip", parsedIP.String()).CombinedOutput()
+			out, err := exec.Command("/usr/bin/fail2ban-client", "set", p.Jail, "unbanip", parsedIP.String()).CombinedOutput()
 			if err != nil {
 				logger.Printf("Exec error: %v, output: %s", err, string(out))
 				http.Error(w, "Exec error", http.StatusInternalServerError)
@@ -139,7 +145,7 @@ func Start() {
 				http.Error(w, "Forbidden jail", http.StatusForbidden)
 				return
 			}
-			out, err := exec.Command("fail2ban-client", "set", p.Jail, "banip", parsedIP.String()).CombinedOutput()
+			out, err := exec.Command("/usr/bin/fail2ban-client", "set", p.Jail, "banip", parsedIP.String()).CombinedOutput()
 			if err != nil {
 				logger.Printf("Exec error: %v, output: %s", err, string(out))
 				http.Error(w, "Exec error", http.StatusInternalServerError)
@@ -161,7 +167,7 @@ func Start() {
 				http.Error(w, "Invalid ID", http.StatusBadRequest)
 				return
 			}
-			out, err := exec.Command("postsuper", "-d", p.ID).CombinedOutput()
+			out, err := exec.Command("/usr/sbin/postsuper", "-d", p.ID).CombinedOutput()
 			if err != nil {
 				logger.Printf("Exec error: %v, output: %s", err, string(out))
 				http.Error(w, "Exec error", http.StatusInternalServerError)
@@ -171,7 +177,7 @@ func Start() {
 			w.WriteHeader(http.StatusOK)
 
 		case ActionQueueFlush:
-			out, err := exec.Command("postqueue", "-f").CombinedOutput()
+			out, err := exec.Command("/usr/sbin/postqueue", "-f").CombinedOutput()
 			if err != nil {
 				logger.Printf("Exec error: %v, output: %s", err, string(out))
 				http.Error(w, "Exec error", http.StatusInternalServerError)
@@ -179,6 +185,16 @@ func Start() {
 			}
 			logger.Printf("Successfully flushed queue")
 			w.WriteHeader(http.StatusOK)
+
+		case ActionImapStatus:
+			out, err := exec.Command("/usr/bin/doveadm", "who").CombinedOutput()
+			if err != nil {
+				logger.Printf("Doveadm error: %v, output: %s", err, string(out))
+				http.Error(w, "Doveadm error", http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "text/plain")
+			w.Write(out)
 
 		case ActionFail2banStatus:
 			jail := r.URL.Query().Get("jail")
@@ -189,12 +205,12 @@ func Start() {
 					http.Error(w, "Forbidden jail", http.StatusForbidden)
 					return
 				}
-				out, err = exec.Command("fail2ban-client", "status", jail).CombinedOutput()
+				out, err = exec.Command("/usr/bin/fail2ban-client", "status", jail).CombinedOutput()
 			} else {
-				out, err = exec.Command("fail2ban-client", "status").CombinedOutput()
+				out, err = exec.Command("/usr/bin/fail2ban-client", "status").CombinedOutput()
 			}
 			if err != nil {
-				logger.Printf("Fail2ban error: %v", err)
+				logger.Printf("Fail2ban error: %v, output: %s", err, string(out))
 				http.Error(w, "Fail2ban error", http.StatusInternalServerError)
 				return
 			}
@@ -202,9 +218,9 @@ func Start() {
 			w.Write(out)
 
 		case ActionQueueStatus:
-			out, err := exec.Command("postqueue", "-p").CombinedOutput()
+			out, err := exec.Command("/usr/sbin/postqueue", "-p").CombinedOutput()
 			if err != nil {
-				logger.Printf("Postqueue error: %v", err)
+				logger.Printf("Postqueue error: %v, output: %s", err, string(out))
 				http.Error(w, "Postqueue error", http.StatusInternalServerError)
 				return
 			}

@@ -352,12 +352,12 @@ func runCmd(name string, arg ...string) string {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, name, arg...)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	if err := cmd.Run(); err != nil {
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Printf("[SYSTEM] runCmd error (%s %v): %v, output: %s\n", name, arg, err, string(out))
 		return ""
 	}
-	return strings.TrimSpace(out.String())
+	return strings.TrimSpace(string(out))
 }
 
 // runCmdWithStdout выполняет команду с таймаутом и возвращает весь вывод (без TrimSpace)
@@ -524,15 +524,19 @@ func getSystemStats() SystemStats {
 				s.MailQueue, _ = strconv.Atoi(match[1])
 			}
 		}
+	} else if err != nil {
+		fmt.Printf("[SYSTEM] Queue stats error: %v\n", err)
 	}
 
-	// 5. IMAP Sessions (doveadm who)
-	imapOut := runCmd("doveadm", "who")
-	if imapOut != "" {
+	// 5. IMAP Sessions (через агент)
+	imapOut, err := sendToAgent(agent.ActionImapStatus, nil, nil)
+	if err == nil && imapOut != "" {
 		lines := strings.Split(imapOut, "\n")
 		if len(lines) > 1 {
 			s.IMAPSessions = len(lines) - 1
 		}
+	} else if err != nil {
+		fmt.Printf("[SYSTEM] IMAP stats error: %v\n", err)
 	}
 
 	// 6. DB Threads (используем SQL-запрос вместо mysqladmin для получения данных со всего сервера)

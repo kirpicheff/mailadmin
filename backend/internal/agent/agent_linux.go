@@ -11,8 +11,8 @@ import (
 )
 
 func SetSocketPermissions(path string) error {
-	// Устанавливаем права 0600 (только владелец сможет читать/писать)
-	if err := os.Chmod(path, 0600); err != nil {
+	// Устанавливаем права 0660 (владелец и группа смогут читать/писать)
+	if err := os.Chmod(path, 0660); err != nil {
 		return err
 	}
 
