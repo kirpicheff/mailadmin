@@ -265,7 +265,7 @@ func RegisterSystemHandlers(g *echo.Group, secret string) {
 		if err != nil {
 			return c.JSON(http.StatusOK, []interface{}{})
 		}
-		reJails := regexp.MustCompile(`Jail list:\s+(.+)`)
+		reJails := regexp.MustCompile(`Jail list:[\s\t]+(.+)`)
 		match := reJails.FindStringSubmatch(out)
 		if len(match) < 2 {
 			return c.JSON(http.StatusOK, []interface{}{})
@@ -287,7 +287,7 @@ func RegisterSystemHandlers(g *echo.Group, secret string) {
 			if err != nil {
 				continue
 			}
-			reIPs := regexp.MustCompile(`Banned IP list:\s+(.+)`)
+			reIPs := regexp.MustCompile(`Banned IP list:[\s\t]+(.+)`)
 			iMatch := reIPs.FindStringSubmatch(jOut)
 			if len(iMatch) >= 2 {
 				ips := strings.Fields(iMatch[1])
@@ -561,7 +561,7 @@ func getSystemStats() SystemStats {
 	// 8. Fail2Ban (через агент)
 	f2bStatus, err := sendToAgent(agent.ActionFail2banStatus, nil, nil)
 	if err == nil && f2bStatus != "" {
-		reJails := regexp.MustCompile(`Jail list:\s+(.+)`)
+		reJails := regexp.MustCompile(`Jail list:[\s\t]+(.+)`)
 		mJails := reJails.FindStringSubmatch(f2bStatus)
 		if len(mJails) >= 2 {
 			jails := strings.Split(mJails[1], ",")
@@ -571,7 +571,7 @@ func getSystemStats() SystemStats {
 				if j == "" { continue }
 				jOut, err := sendToAgent(agent.ActionFail2banStatus, nil, map[string]string{"jail": j})
 				if err != nil { continue }
-				reBanned := regexp.MustCompile(`Currently banned:\s+(\d+)`)
+				reBanned := regexp.MustCompile(`Currently banned:[\s\t]+(\d+)`)
 				mBanned := reBanned.FindStringSubmatch(jOut)
 				if len(mBanned) >= 2 {
 					count, _ := strconv.Atoi(mBanned[1])
@@ -582,9 +582,9 @@ func getSystemStats() SystemStats {
 		}
 	}
 
-	// 9. Supervisor Services
-	superOut := runCmd("supervisorctl", "status")
-	if superOut != "" {
+	// 9. Supervisor Services (через агент)
+	superOut, err := sendToAgent(agent.ActionServiceStatus, nil, nil)
+	if err == nil && superOut != "" {
 		scanner := bufio.NewScanner(strings.NewReader(superOut))
 		for scanner.Scan() {
 			line := scanner.Text()
@@ -597,6 +597,8 @@ func getSystemStats() SystemStats {
 				})
 			}
 		}
+	} else if err != nil {
+		fmt.Printf("[SYSTEM] Supervisor stats error: %v\n", err)
 	}
 
 	// 10. SSL Remaining

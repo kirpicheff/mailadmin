@@ -24,6 +24,7 @@ const (
 	ActionQueueFlush     ActionType = "queue_flush"
 	ActionQueueStatus    ActionType = "queue_status"
 	ActionImapStatus     ActionType = "imap_status"
+	ActionServiceStatus  ActionType = "service_status"
 	ActionPing           ActionType = "ping"
 )
 
@@ -212,6 +213,16 @@ func Start() {
 			if err != nil {
 				logger.Printf("Fail2ban error: %v, output: %s", err, string(out))
 				http.Error(w, "Fail2ban error", http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "text/plain")
+			w.Write(out)
+
+		case ActionServiceStatus:
+			out, err := exec.Command("/usr/bin/supervisorctl", "status").CombinedOutput()
+			if err != nil {
+				logger.Printf("Supervisor error: %v, output: %s", err, string(out))
+				http.Error(w, "Supervisor error", http.StatusInternalServerError)
 				return
 			}
 			w.Header().Set("Content-Type", "text/plain")
