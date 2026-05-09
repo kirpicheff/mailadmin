@@ -524,8 +524,6 @@ func getSystemStats() SystemStats {
 				s.MailQueue, _ = strconv.Atoi(match[1])
 			}
 		}
-	} else if err != nil {
-		fmt.Printf("[SYSTEM] Queue stats error: %v\n", err)
 	}
 
 	// 5. IMAP Sessions (через агент)
@@ -535,8 +533,6 @@ func getSystemStats() SystemStats {
 		if len(lines) > 1 {
 			s.IMAPSessions = len(lines) - 1
 		}
-	} else if err != nil {
-		fmt.Printf("[SYSTEM] IMAP stats error: %v\n", err)
 	}
 
 	// 6. DB Threads (используем SQL-запрос вместо mysqladmin для получения данных со всего сервера)
@@ -560,12 +556,6 @@ func getSystemStats() SystemStats {
 
 	// 8. Fail2Ban (через агент)
 	f2bStatus, err := sendToAgent(agent.ActionFail2banStatus, nil, nil)
-	if err != nil {
-		fmt.Printf("[SYSTEM] Fail2ban global error: %v\n", err)
-	} else if f2bStatus == "" {
-		fmt.Printf("[SYSTEM] Fail2ban global status is EMPTY\n")
-	}
-
 	if err == nil && f2bStatus != "" {
 		reJails := regexp.MustCompile(`Jail list:[\s\t]+(.+)`)
 		mJails := reJails.FindStringSubmatch(f2bStatus)
@@ -577,7 +567,6 @@ func getSystemStats() SystemStats {
 				if j == "" { continue }
 				jOut, err := sendToAgent(agent.ActionFail2banStatus, nil, map[string]string{"jail": j})
 				if err != nil {
-					fmt.Printf("[SYSTEM] Fail2ban jail %s error: %v\n", j, err)
 					continue
 				}
 				reBanned := regexp.MustCompile(`(?i)banned:[\s\t]+(\d+)`)
@@ -606,8 +595,6 @@ func getSystemStats() SystemStats {
 				})
 			}
 		}
-	} else if err != nil {
-		fmt.Printf("[SYSTEM] Supervisor stats error: %v\n", err)
 	}
 
 	// 10. SSL Remaining

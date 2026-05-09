@@ -62,17 +62,6 @@ func Start() {
 	fmt.Println("Agent: Start() called")
 	logger := initLogger()
 	logger.Println("Starting agent daemon...")
-	logger.Printf("Process identity: UID=%d, GID=%d", os.Getuid(), os.Getgid())
-
-	// Проверка доступности инструментов при старте
-	for _, tool := range []string{"fail2ban-client", "postqueue", "doveadm", "supervisorctl", "postsuper"} {
-		path, err := exec.LookPath(tool)
-		if err != nil {
-			logger.Printf("CRITICAL DIAGNOSTIC: %s NOT FOUND in PATH", tool)
-		} else {
-			logger.Printf("DIAGNOSTIC: %s found at %s", tool, path)
-		}
-	}
 	fmt.Printf("Agent: logging initialized, socket path: %s\n", SocketPath)
 
 	// Создаем директорию для сокета, если она не существует
@@ -238,9 +227,6 @@ func Start() {
 				logger.Printf("Fail2ban error: %v, output: %s", err, string(out))
 				http.Error(w, "Fail2ban error", http.StatusInternalServerError)
 				return
-			}
-			if jail != "" {
-				logger.Printf("DEBUG: Fail2ban output for %s: %s", jail, string(out))
 			}
 			w.Header().Set("Content-Type", "text/plain")
 			w.Write(out)
