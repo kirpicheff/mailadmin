@@ -19,7 +19,7 @@
   }
 
   body {
-    @apply bg-transparent;
+    @apply bg-transparent font-light;
   }
 }
 

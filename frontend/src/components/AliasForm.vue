@@ -121,6 +121,7 @@ const form = reactive({
   address: '',
   goto: '',
   active: true,
+  domain: '',
   alias_domain: '',
   target_domain: ''
 })
@@ -163,6 +164,7 @@ const save = async () => {
       }
     } else {
       form.address = `${localPart.value}@${targetDomain.value}`
+      form.domain = targetDomain.value
       // Очищаем и объединяем адреса обратно в запятые
       form.goto = form.goto.split(/[\n,;]+/).map(s => s.trim()).filter(s => s).join(',')
       
