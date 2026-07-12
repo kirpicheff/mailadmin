@@ -304,7 +304,12 @@
     "batch_delete_mailboxes": "Массовое удаление ящиков",
     "batch_status_update": "Массовое изменение статуса",
     "create_domain_alias": "Создание алиаса домена",
-    "delete_domain_alias": "Удаление алиаса домена"
+    "delete_domain_alias": "Удаление алиаса домена",
+    "edit_alias": "Изменение алиаса",
+    "edit_mailbox": "Изменение ящика",
+    "queue_flush": "Принудительная отправка очереди",
+    "queue_delete": "Удаление сообщения из очереди",
+    "fail2ban_unban": "Разблокировка IP"
   },
   "login": {
     "title": "MailAdmin",

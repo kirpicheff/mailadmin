@@ -300,7 +300,12 @@
     "batch_delete_mailboxes": "Batch delete mailboxes",
     "batch_status_update": "Batch status update",
     "create_domain_alias": "Create domain alias",
-    "delete_domain_alias": "Delete domain alias"
+    "delete_domain_alias": "Delete domain alias",
+    "edit_alias": "Edit alias",
+    "edit_mailbox": "Edit mailbox",
+    "queue_flush": "Flush mail queue",
+    "queue_delete": "Delete from queue",
+    "fail2ban_unban": "Unban IP"
   },
   "login": {
     "title": "MailAdmin",

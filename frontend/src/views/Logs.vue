@@ -67,7 +67,12 @@ const translateAction = (action) => {
     'batch_delete_mailboxes': t('actions.batch_delete_mailboxes'),
     'batch_status_update': t('actions.batch_status_update'),
     'create_domain_alias': t('actions.create_domain_alias'),
-    'delete_domain_alias': t('actions.delete_domain_alias')
+    'delete_domain_alias': t('actions.delete_domain_alias'),
+    'edit_alias': t('actions.edit_alias'),
+    'edit_mailbox': t('actions.edit_mailbox'),
+    'queue_flush': t('actions.queue_flush'),
+    'queue_delete': t('actions.queue_delete'),
+    'fail2ban_unban': t('actions.fail2ban_unban')
   }
   return dictionary[act] || action
 }
