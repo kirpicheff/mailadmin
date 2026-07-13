@@ -17,10 +17,8 @@ type EmailMessage struct {
 	IsHTML   bool
 }
 
-// SendEmail отправляет письмо через локальный или внешний SMTP
+// SendEmail отправляет письмо через локальный или внешний SMTP с поддержкой обхода проверки просроченных TLS-сертификатов при STARTTLS
 func SendEmail(msg *EmailMessage) error {
-	// По умолчанию пробуем локальный Postfix без авторизации
-	// Для продакшена параметры можно вынести в конфиг
 	host := "127.0.0.1"
 	port := "25"
 	addr := net.JoinHostPort(host, port)
@@ -38,17 +36,49 @@ func SendEmail(msg *EmailMessage) error {
 	header["Content-Type"] = contentType
 	header["Content-Transfer-Encoding"] = "base64"
 
-	// Формируем тело в Base64 для корректного отображения кириллицы
 	message := ""
 	for k, v := range header {
 		message += fmt.Sprintf("%s: %s\r\n", k, v)
 	}
 	message += "\r\n" + msg.Body
 
-	// Для локального Postfix обычно авторизация не нужна
-	// Если нужно будет добавить поддержку Auth - расширим структуру
-	
-	return smtp.SendMail(addr, nil, msg.From, msg.To, []byte(message))
+	// Подключаемся вручную к SMTP, чтобы проигнорировать проверку просроченного SSL-сертификата
+	c, err := smtp.Dial(addr)
+	if err != nil {
+		return err
+	}
+	defer c.Close()
+
+	if ok, _ := c.Extension("STARTTLS"); ok {
+		config := &tls.Config{
+			InsecureSkipVerify: true,
+		}
+		if err = c.StartTLS(config); err != nil {
+			return err
+		}
+	}
+
+	if err = c.Mail(msg.From); err != nil {
+		return err
+	}
+	for _, addr := range msg.To {
+		if err = c.Rcpt(addr); err != nil {
+			return err
+		}
+	}
+	w, err := c.Data()
+	if err != nil {
+		return err
+	}
+	_, err = w.Write([]byte(message))
+	if err != nil {
+		return err
+	}
+	err = w.Close()
+	if err != nil {
+		return err
+	}
+	return c.Quit()
 }
 
 // SendWithTLS для случаев, когда нужен защищенный порт (например 465 или 587 с STARTTLS)

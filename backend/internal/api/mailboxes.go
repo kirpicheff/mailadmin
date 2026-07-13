@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -206,11 +207,13 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 						domainName, username, rawPassword, name,
 					)
 
+					encodedBody := base64.StdEncoding.EncodeToString([]byte(body))
+
 					_ = mail.SendEmail(&mail.EmailMessage{
 						From:    "noreply@" + domainName,
 						To:      to,
 						Subject: subject,
-						Body:    body,
+						Body:    encodedBody,
 						IsHTML:  false,
 					})
 				}
@@ -234,11 +237,13 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 						domainName, username, name,
 					)
 
+					encodedBody := base64.StdEncoding.EncodeToString([]byte(body))
+
 					_ = mail.SendEmail(&mail.EmailMessage{
 						From:    "noreply@" + domainName,
 						To:      []string{email},
 						Subject: subject,
-						Body:    body,
+						Body:    encodedBody,
 						IsHTML:  false,
 					})
 				}
