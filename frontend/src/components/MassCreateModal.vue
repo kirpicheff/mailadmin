@@ -27,8 +27,8 @@
             class="w-full px-6 py-4 rounded-3xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 text-slate-900 dark:text-white focus:border-indigo-500 transition-all outline-none font-bold text-sm leading-relaxed"></textarea>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div class="space-y-3">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="space-y-3 md:col-span-2">
             <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">{{ t('mailboxes.mass_modal.password_label') }}</label>
             <div class="flex gap-2">
               <input v-model="form.password" type="text" required
