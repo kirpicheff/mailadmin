@@ -11,6 +11,7 @@
         </div>
         <div class="space-y-4">
           <input v-model="newPassword" type="password" required class="appearance-none rounded-xl block w-full px-4 py-3 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white sm:text-sm" :placeholder="t('change_password.new_password')" />
+          <PasswordStrength :password="newPassword" />
           <input v-model="confirmPassword" type="password" required class="appearance-none rounded-xl block w-full px-4 py-3 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white sm:text-sm" :placeholder="t('change_password.confirm_password')" />
         </div>
 
@@ -27,6 +28,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/api/axios'
 import { useAuthStore } from '@/store/auth'
+import PasswordStrength from '@/components/PasswordStrength.vue'
 import { useI18n } from 'vue-i18n'
 
 const router = useRouter()

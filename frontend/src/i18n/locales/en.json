@@ -296,6 +296,20 @@
     },
     "success": "Password changed successfully! Please log in again."
   },
+  "password_strength": {
+    "title": "Password Strength",
+    "very_weak": "Very Weak",
+    "weak": "Weak",
+    "medium": "Medium",
+    "strong": "Strong",
+    "criteria": {
+      "length": "At least 8 characters",
+      "lowercase": "Lowercase letters (a-z)",
+      "uppercase": "Uppercase letters (A-Z)",
+      "number": "Numbers (0-9)",
+      "special": "Special characters (!@#$...)"
+    }
+  },
   "actions": {
     "create_domain": "Create Domain",
     "update_domain": "Update Domain",

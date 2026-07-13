@@ -199,6 +199,7 @@
                     placeholder="••••••••"
                     class="w-full pl-12 pr-4 py-3 rounded-2xl border-0 bg-slate-100 dark:bg-slate-800/50 dark:text-white focus:ring-2 focus:ring-mail-blue-500 transition-all" />
                 </div>
+                <PasswordStrength :password="form.password" />
               </div>
               <div class="flex flex-col justify-center gap-4">
                 <!-- Переключатель Суперадмина -->
@@ -293,6 +294,7 @@
 <script setup>
 import { ref, onMounted, reactive } from 'vue'
 import api from '@/api/axios'
+import PasswordStrength from '@/components/PasswordStrength.vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
