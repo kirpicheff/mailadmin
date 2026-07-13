@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -63,7 +64,7 @@ func RegisterAliasHandlers(g *echo.Group, secret string) {
 	// Создание алиаса
 	aliasGroup.POST("", func(c echo.Context) error {
 		type CreateRequest struct {
-			Address string `json:"address" validate:"required,email"`
+			Address string `json:"address" validate:"required,email_or_catchall"`
 			Goto    string `json:"goto" validate:"required"` // Может быть списком через запятую
 			Domain  string `json:"domain" validate:"required,fqdn"`
 			Active  bool   `json:"active"`
@@ -74,6 +75,12 @@ func RegisterAliasHandlers(g *echo.Group, secret string) {
 		}
 		if err := c.Validate(&req); err != nil {
 			return err
+		}
+
+		// Проверяем, что домен в адресе совпадает с указанным доменом
+		parts := strings.Split(req.Address, "@")
+		if len(parts) != 2 || parts[1] != req.Domain {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "address domain must match request domain"})
 		}
 
 		claims := c.Get("user").(*auth.Claims)

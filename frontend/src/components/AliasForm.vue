@@ -31,7 +31,7 @@
           <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 ml-1">{{ t('alias_form.source_label') }}</label>
           <div class="flex items-center gap-3">
             <div class="relative flex-1 group">
-              <input v-model="localPart" :disabled="isEdit" type="text" placeholder="sales" required
+              <input v-model="localPart" :disabled="isEdit" type="text" :placeholder="t('alias_form.source_placeholder')"
                 class="w-full px-5 py-3.5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 text-slate-900 dark:text-white focus:border-indigo-500 transition-all outline-none font-bold" />
             </div>
             <div class="relative w-48">

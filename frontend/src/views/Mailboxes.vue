@@ -444,7 +444,7 @@ const filteredItems = computed(() => {
         id: al.address,
         address: al.address,
         type: 'alias',
-        typeName: t('mailboxes.types.alias'),
+        typeName: al.address.startsWith('@') ? t('mailboxes.types.catch_all') : t('mailboxes.types.alias'),
         goto_list: al.goto.split(',').map(s => s.trim()).filter(s => s)
       })))
   }

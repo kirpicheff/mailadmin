@@ -160,6 +160,7 @@
     "types": {
       "mailbox": "Почтовый ящик",
       "alias": "Алиас",
+      "catch_all": "Catch-All",
       "domain_alias": "Алиас домена"
     },
     "quota": {
@@ -208,6 +209,7 @@
     "mode_regular": "Обычный",
     "mode_domain": "Доменный",
     "source_label": "Псевдоним (Источник)",
+    "source_placeholder": "например: sales (пусто для catch-all)",
     "source_domain_label": "Домен-источник (Алиас)",
     "target_domain_label": "Целевой домен (Куда слать почту)",
     "domain_hint": "Вся почта, поступающая на {alias}, будет перенаправлена на {target}",

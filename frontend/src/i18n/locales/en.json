@@ -159,6 +159,7 @@
     "types": {
       "mailbox": "Mailbox",
       "alias": "Alias",
+      "catch_all": "Catch-All",
       "domain_alias": "Domain Alias"
     },
     "quota": {
@@ -207,6 +208,7 @@
     "mode_regular": "Regular",
     "mode_domain": "Domain",
     "source_label": "Alias (Source)",
+    "source_placeholder": "e.g., sales (leave empty for catch-all)",
     "source_domain_label": "Source Domain (Alias)",
     "target_domain_label": "Target Domain (Destination)",
     "domain_hint": "All mail arriving at {alias} will be forwarded to {target}",
