@@ -273,7 +273,7 @@
     "title": "Mailbox Creation Notification Rules",
     "subtitle": "Configure passwordless notification recipients when new mailboxes are created",
     "add_email": "Add Recipient",
-    "email_placeholder": "hr@company.com",
+    "email_placeholder": "hr{'@'}company.com",
     "no_rules": "No notification rules configured yet",
     "domains_list": "Domains to notify for:",
     "active": "Active",
