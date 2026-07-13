@@ -307,7 +307,7 @@
       "lowercase": "Lowercase letters (a-z)",
       "uppercase": "Uppercase letters (A-Z)",
       "number": "Numbers (0-9)",
-      "special": "Special characters (!@#$...)"
+      "special": "Special characters (!{'@'}#$...)"
     }
   },
   "actions": {
