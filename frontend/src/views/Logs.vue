@@ -72,7 +72,9 @@ const translateAction = (action) => {
     'edit_mailbox': t('actions.edit_mailbox'),
     'queue_flush': t('actions.queue_flush'),
     'queue_delete': t('actions.queue_delete'),
-    'fail2ban_unban': t('actions.fail2ban_unban')
+    'fail2ban_unban': t('actions.fail2ban_unban'),
+    'update_notification_rules': t('actions.update_notification_rules'),
+    'delete_notification_rules': t('actions.delete_notification_rules')
   }
   return dictionary[act] || action
 }

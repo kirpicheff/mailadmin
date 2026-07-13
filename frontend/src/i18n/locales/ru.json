@@ -340,7 +340,9 @@
     "edit_mailbox": "Изменение ящика",
     "queue_flush": "Принудительная отправка очереди",
     "queue_delete": "Удаление сообщения из очереди",
-    "fail2ban_unban": "Разблокировка IP"
+    "fail2ban_unban": "Разблокировка IP",
+    "update_notification_rules": "Изменение правил уведомлений",
+    "delete_notification_rules": "Удаление правил уведомлений"
   },
   "login": {
     "title": "MailAdmin",

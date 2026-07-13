@@ -336,7 +336,9 @@
     "edit_mailbox": "Edit mailbox",
     "queue_flush": "Flush mail queue",
     "queue_delete": "Delete from queue",
-    "fail2ban_unban": "Unban IP"
+    "fail2ban_unban": "Unban IP",
+    "update_notification_rules": "Update notification rules",
+    "delete_notification_rules": "Delete notification rules"
   },
   "login": {
     "title": "MailAdmin",
