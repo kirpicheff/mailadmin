@@ -125,6 +125,24 @@ type AppConfig struct {
 
 func (AppConfig) TableName() string { return "config" }
 
+// NotificationRule определяет связь email получателя с обслуживаемым доменом
+type NotificationRule struct {
+	ID     uint   `gorm:"primaryKey;autoIncrement;column:id" json:"id"`
+	Email  string `gorm:"column:email;size:255;not null;index:idx_email_domain" json:"email"`
+	Domain string `gorm:"column:domain;size:255;not null;index:idx_email_domain" json:"domain"` // Имя конкретного домена или ALL
+	Active bool   `gorm:"column:active;not null;default:1" json:"active"`
+}
+
+func (NotificationRule) TableName() string { return "ma_notification_rules" }
+
+// Setting представляет таблицу ma_settings для хранения произвольных параметров
+type Setting struct {
+	Key   string `gorm:"primaryKey;column:setting_key;size:255" json:"key"`
+	Value string `gorm:"column:setting_value;type:text" json:"value"`
+}
+
+func (Setting) TableName() string { return "ma_settings" }
+
 // Vacation представляет таблицу vacation
 type Vacation struct {
 	Email        string    `gorm:"primaryKey;column:email;size:255" json:"email"`

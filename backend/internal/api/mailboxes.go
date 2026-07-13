@@ -12,6 +12,7 @@ import (
 	"github.com/user/mailadmin/internal/audit"
 	"github.com/user/mailadmin/internal/auth"
 	"github.com/user/mailadmin/internal/db"
+	"github.com/user/mailadmin/internal/mail"
 	"github.com/user/mailadmin/internal/models"
 )
 
@@ -175,6 +176,74 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 		}
 
 		tx.Commit()
+
+		// Асинхронная отправка уведомлений
+		go func(username, rawPassword, name, domainName string) {
+			// 1. Рассылка суперадминам (с логином и паролем)
+			var superAdmins []models.Admin
+			if err := db.DB.Where("superadmin = ? AND active = ?", true, true).Find(&superAdmins).Error; err == nil {
+				for _, admin := range superAdmins {
+					// Проверяем, не отключил ли данный суперадмин рассылку паролей
+					var opt models.Setting
+					if err := db.DB.Where("setting_key = ?", "disable_pass_notif:"+admin.Username).First(&opt).Error; err == nil {
+						if opt.Value == "true" {
+							continue
+						}
+					}
+
+					to := []string{admin.Username}
+					if admin.EmailOther != "" {
+						to = append(to, admin.EmailOther)
+					}
+
+					subject := fmt.Sprintf("Создан новый почтовый ящик: %s", username)
+					body := fmt.Sprintf(
+						"Здравствуйте!\r\n\r\nВ домене %s был создан новый почтовый ящик:\r\n"+
+							"Адрес: %s\r\n"+
+							"Пароль: %s\r\n"+
+							"Владелец: %s\r\n\r\n"+
+							"Сообщение создано автоматически почтовой панелью управления.",
+						domainName, username, rawPassword, name,
+					)
+
+					_ = mail.SendEmail(&mail.EmailMessage{
+						From:    "noreply@" + domainName,
+						To:      to,
+						Subject: subject,
+						Body:    body,
+						IsHTML:  false,
+					})
+				}
+			}
+
+			// 2. Рассылка по правилам уведомлений (без пароля)
+			var rules []models.NotificationRule
+			if err := db.DB.Where("(domain = ? OR domain = ?) AND active = ?", domainName, "ALL", true).Find(&rules).Error; err == nil {
+				emails := make(map[string]bool)
+				for _, r := range rules {
+					emails[r.Email] = true
+				}
+
+				for email := range emails {
+					subject := fmt.Sprintf("Создан новый почтовый ящик: %s", username)
+					body := fmt.Sprintf(
+						"Здравствуйте!\r\n\r\nУведомляем вас о создании нового почтового ящика в домене %s:\r\n"+
+							"Адрес: %s\r\n"+
+							"Владелец: %s\r\n\r\n"+
+							"Сообщение создано автоматически почтовой панелью управления.",
+						domainName, username, name,
+					)
+
+					_ = mail.SendEmail(&mail.EmailMessage{
+						From:    "noreply@" + domainName,
+						To:      []string{email},
+						Subject: subject,
+						Body:    body,
+						IsHTML:  false,
+					})
+				}
+			}
+		}(box.Username, req.Password, box.Name, box.Domain)
 
 		audit.Log(db.DB, claims.Username, box.Domain, "create mailbox", box.Username)
 

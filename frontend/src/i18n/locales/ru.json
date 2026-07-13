@@ -259,7 +259,8 @@
       "status_active": "Статус: Активен",
       "extra_email": "Доп. Email",
       "phone": "Телефон",
-      "domain_access": "Доступ к доменам"
+      "domain_access": "Доступ к доменам",
+      "receive_passwords": "Получать пароли новых ящиков"
     },
     "delete_confirm": "Удалить администратора {username}?",
     "errors": {
@@ -267,6 +268,20 @@
       "delete": "Ошибка при удалении",
       "status_change": "Ошибка при смене статуса"
     }
+  },
+  "notifications": {
+    "tab_title": "Уведомления о ящиках",
+    "title": "Правила уведомлений о создании ящиков",
+    "subtitle": "Настройка получателей писем при добавлении новых адресов (без указания паролей)",
+    "add_email": "Добавить получателя",
+    "email_placeholder": "hr@company.com",
+    "no_rules": "Правила уведомлений пока не настроены",
+    "domains_list": "Домены для отправки:",
+    "active": "Активно",
+    "select_all": "Выбрать все домены",
+    "deselect_all": "Снять все домены",
+    "delete_confirm": "Удалить правила для получателя {email}?",
+    "save_success": "Правила успешно сохранены"
   },
   "change_password": {
     "title": "Смена пароля",

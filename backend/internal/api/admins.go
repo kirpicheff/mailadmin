@@ -38,9 +38,18 @@ func RegisterAdminHandlers(api *echo.Group, secret string) {
 		var domains []string
 		db.DB.Model(&models.DomainAdmin{}).Where("username = ?", username).Pluck("domain", &domains)
 
+		var setting models.Setting
+		receivePasswords := true
+		if err := db.DB.Where("setting_key = ?", "disable_pass_notif:"+username).First(&setting).Error; err == nil {
+			if setting.Value == "true" {
+				receivePasswords = false
+			}
+		}
+
 		return c.JSON(http.StatusOK, map[string]interface{}{
-			"admin":   admin,
-			"domains": domains,
+			"admin":             admin,
+			"domains":           domains,
+			"receive_passwords": receivePasswords,
 		})
 	})
 
@@ -48,9 +57,10 @@ func RegisterAdminHandlers(api *echo.Group, secret string) {
 	adminGroup.POST("", func(c echo.Context) error {
 		type CreateRequest struct {
 			models.Admin
-			Username string   `json:"username" validate:"required,email"`
-			Password string   `json:"password" validate:"required,min=8"`
-			Domains  []string `json:"domains"`
+			Username         string   `json:"username" validate:"required,email"`
+			Password         string   `json:"password" validate:"required,min=8"`
+			Domains          []string `json:"domains"`
+			ReceivePasswords bool     `json:"receive_passwords"`
 		}
 		var req CreateRequest
 		if err := c.Bind(&req); err != nil {
@@ -80,6 +90,17 @@ func RegisterAdminHandlers(api *echo.Group, secret string) {
 				}
 			}
 
+			// Если суперадмин не хочет получать пароли, сохраняем настройку
+			if !req.ReceivePasswords {
+				setting := models.Setting{
+					Key:   "disable_pass_notif:" + req.Admin.Username,
+					Value: "true",
+				}
+				if err := tx.Save(&setting).Error; err != nil {
+					return err
+				}
+			}
+
 			claims := c.Get("user").(*auth.Claims)
 			audit.Log(tx, claims.Username, "system", "create admin", req.Admin.Username)
 
@@ -96,12 +117,13 @@ func RegisterAdminHandlers(api *echo.Group, secret string) {
 	adminGroup.PUT("/:username", func(c echo.Context) error {
 		username := c.Param("username")
 		type UpdateRequest struct {
-			Password   string   `json:"password" validate:"omitempty,min=8"`
-			Active     bool     `json:"active"`
-			SuperAdmin bool     `json:"superadmin"`
-			Phone      string   `json:"phone"`
-			EmailOther string   `json:"email_other" validate:"omitempty,email"`
-			Domains    []string `json:"domains"`
+			Password         string   `json:"password" validate:"omitempty,min=8"`
+			Active           bool     `json:"active"`
+			SuperAdmin       bool     `json:"superadmin"`
+			Phone            string   `json:"phone"`
+			EmailOther       string   `json:"email_other" validate:"omitempty,email"`
+			Domains          []string `json:"domains"`
+			ReceivePasswords bool     `json:"receive_passwords"`
 		}
 		var req UpdateRequest
 		if err := c.Bind(&req); err != nil {
@@ -142,6 +164,21 @@ func RegisterAdminHandlers(api *echo.Group, secret string) {
 				}
 			}
 
+			// Обновляем опцию рассылки паролей
+			if !req.ReceivePasswords {
+				setting := models.Setting{
+					Key:   "disable_pass_notif:" + username,
+					Value: "true",
+				}
+				if err := tx.Save(&setting).Error; err != nil {
+					return err
+				}
+			} else {
+				if err := tx.Where("setting_key = ?", "disable_pass_notif:"+username).Delete(&models.Setting{}).Error; err != nil {
+					return err
+				}
+			}
+
 			claims := c.Get("user").(*auth.Claims)
 			audit.Log(tx, claims.Username, "system", "update admin", username)
 
@@ -162,6 +199,10 @@ func RegisterAdminHandlers(api *echo.Group, secret string) {
 				return err
 			}
 			if err := tx.Where("username = ?", username).Delete(&models.Admin{}).Error; err != nil {
+				return err
+			}
+			// Удаляем также настройку уведомлений
+			if err := tx.Where("setting_key = ?", "disable_pass_notif:"+username).Delete(&models.Setting{}).Error; err != nil {
 				return err
 			}
 

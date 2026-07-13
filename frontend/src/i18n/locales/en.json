@@ -258,7 +258,8 @@
       "status_active": "Status: Active",
       "extra_email": "Extra Email",
       "phone": "Phone",
-      "domain_access": "Domain Access"
+      "domain_access": "Domain Access",
+      "receive_passwords": "Receive Passwords of New Mailboxes"
     },
     "delete_confirm": "Delete administrator {username}?",
     "errors": {
@@ -266,6 +267,20 @@
       "delete": "Error deleting",
       "status_change": "Error changing status"
     }
+  },
+  "notifications": {
+    "tab_title": "Mailbox Notifications",
+    "title": "Mailbox Creation Notification Rules",
+    "subtitle": "Configure passwordless notification recipients when new mailboxes are created",
+    "add_email": "Add Recipient",
+    "email_placeholder": "hr@company.com",
+    "no_rules": "No notification rules configured yet",
+    "domains_list": "Domains to notify for:",
+    "active": "Active",
+    "select_all": "Select All Domains",
+    "deselect_all": "Deselect All Domains",
+    "delete_confirm": "Delete rules for recipient {email}?",
+    "save_success": "Rules saved successfully"
   },
   "change_password": {
     "title": "Change Password",
