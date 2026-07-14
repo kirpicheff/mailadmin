@@ -553,6 +553,23 @@
     "empty": "No log entries found for this criteria",
     "initializing": "Initializing Terminal...",
     "rows": "{count} rows",
-    "subtitle": "Mail System Logs"
+    "subtitle": "Mail System Logs",
+    "tab_raw": "Raw Log",
+    "tab_analysis": "Log Analysis",
+    "stat_total_tx": "Total Transactions",
+    "stat_sent": "Successfully Sent",
+    "stat_deferred": "Deferred",
+    "stat_bounced": "Bounced",
+    "stat_rejected": "Rejected (NOQUEUE)",
+    "top_senders": "Top Senders",
+    "top_recipients": "Top Recipients",
+    "top_clients": "Top Client IPs",
+    "table_rejects": "Rejected Incoming Mail (NOQUEUE)",
+    "col_time": "Time",
+    "col_client": "Client",
+    "col_from": "Sender",
+    "col_to": "Recipient",
+    "col_reason": "Reason / Server Response",
+    "no_transactions": "No transactions found in this range"
   }
 }

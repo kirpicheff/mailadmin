@@ -20,6 +20,7 @@ import (
 	"github.com/user/mailadmin/internal/audit"
 	"github.com/user/mailadmin/internal/auth"
 	"github.com/user/mailadmin/internal/db"
+	"github.com/user/mailadmin/internal/parser"
 )
 
 // sendToAgent отправляет запрос к Unix сокету агента и возвращает ответ
@@ -257,6 +258,42 @@ func RegisterSystemHandlers(g *echo.Group, secret string) {
 		}
 
 		return c.JSON(http.StatusOK, map[string]string{"logs": content})
+	})
+
+	// Анализ логов сервера
+	system.GET("/logs/analysis", func(c echo.Context) error {
+		lines, _ := strconv.Atoi(c.QueryParam("lines"))
+		if lines <= 0 || lines > 5000 {
+			lines = 1000
+		}
+
+		// Пытаемся найти лог почты
+		logPaths := []string{"/var/log/mail.log", "/var/log/maillog"}
+		var content string
+		var logFile string
+		for _, p := range logPaths {
+			if _, err := os.Stat(p); err == nil {
+				logFile = p
+				break
+			}
+		}
+
+		if logFile != "" {
+			content = runCmd("tail", "-n", strconv.Itoa(lines), logFile)
+		}
+
+		// Если файлов нет или пусто, пробуем journalctl
+		if content == "" && logFile == "" {
+			content = runCmd("journalctl", "-u", "postfix", "-n", strconv.Itoa(lines), "--no-pager")
+		}
+
+		var logLines []string
+		if content != "" {
+			logLines = strings.Split(content, "\n")
+		}
+
+		analysis := parser.ParsePostfixLogs(logLines)
+		return c.JSON(http.StatusOK, analysis)
 	})
 
 	// Fail2Ban управление
