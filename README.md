@@ -43,20 +43,24 @@ The system implements strict access control using role segregation. There are tw
 
 ### 2. Mailboxes & Aliases
 - Full CRUD for mailboxes with individual quota limit management.
+- **Alphabetical Pagination:** A-Z/А-Я index filter for lightning-fast navigation in large mailbox lists.
+- **Password Strength Meter:** Real-time visual feedback on password complexity during creation/modification.
 - **Sieve Filter Builder:** A powerful visual constructor for message processing rules (Move to folder, Forward, Discard, Reject, Mark as Read).
 - **Advanced Vacation:** Set up modern auto-replies via Sieve with custom subjects, multi-line messages, and interval control.
 - Generation of cryptographically secure passwords, support for mandatory password expiration (`password_expiry`).
-- Alias management (forwarding emails from one address to a group of addresses). Automatic creation of Postmaster aliases when new domains are added.
+- Email notifications sent to administrative recipients when a new mailbox is created or when a password is changed.
+- Alias management (forwarding emails from one address to a group of addresses) and **Catch-All Domain Aliases** support. Automatic creation of Postmaster aliases when new domains are added.
 
 ### 3. Admin & Monitoring Tools
 - **System Health Dashboard:** Real-time monitoring of CPU, RAM, Disk, SSL certificate validity, and system service statuses.
+- **Postfix Log Analyzer:** Interactive log parser that groups events into complete mail transactions by Queue ID (supports ISO 8601 & traditional dates, up to 10k lines). Displays delivery status distribution, top senders/recipients/clients, incoming rejects (NOQUEUE), and expandible delivery logs.
 - **Fail2Ban Management:** View active bans across all jails (SSH, Postfix, Dovecot) and unban malicious IPs with a single click.
 - **Mail Queue Management:** View, search, and delete messages in the Postfix mail queue directly from the web interface.
 - Tool for sending verification (test) emails on behalf of an administrator.
-- Broadcast mailing tool to send notifications to all users in a domain or group of domains.
+- **Server-wide Broadcasts:** Send secure global notifications to all active mailboxes across all domains with a built-in Postfix integration guide.
 
 ### 4. Audit Logs
-- Logging of every critical action to the backend database.
+- Logging of every critical action to the backend database (localized action types).
 - Recording *who*, *where* (in which domain), *when*, and *what* action was performed (e.g., "create mailbox", "update domain").
 - Regular administrators' access to the log is restricted only to events within their permitted domains.
 
@@ -186,20 +190,24 @@ For production use, it is recommended to compile the frontend (`npm run build`) 
 
 ### 2. Почтовые ящики и алиасы
 - Полноценный CRUD для почтовых ящиков с возможностью управления лимитами индивидуальной квоты.
+- **Алфавитная пагинация**: Фильтр по алфавиту (A-Z, А-Я) для мгновенного поиска в больших списках ящиков.
+- **Индикатор сложности пароля**: Визуальный контроль надежности пароля при создании и изменении аккаунтов.
 - **Конструктор фильтров Sieve:** Мощный визуальный конструктор правил обработки почты (Перемещение в папку, Пересылка, Удаление, Отклонение, Пометка прочитанным).
 - **Продвинутый Автоответчик:** Настройка современных автоответов через Sieve с поддержкой многострочного текста, интервалов и условий.
 - Генерация криптографически безопасных паролей, поддержка принудительного устаревания пароля (`password_expiry`).
-- Управление алиасами (направление писем с одного адреса на группу адресов). Автосоздание Postmaster-алиасов при добавлении новых доменов.
+- Отправка email-уведомлений администраторам при создании нового ящика или смене пароля.
+- Управление пересылками и поддержка **Catch-All алиасов** для домена. Автосоздание Postmaster-алиасов при добавлении новых доменов.
 
 ### 3. Инструменты и Мониторинг
 - **Дашборд здоровья системы:** Мониторинг RAM, Диска, статуса SSL-сертификатов и сессий IMAP в реальном времени.
+- **Анализатор логов Postfix**: Интерактивный разбор до 10000 строк логов. Собирает события в транзакции по Queue ID (поддерживает ISO 8601 и традиционные даты), отображает распределение статусов, топ отправителей/получателей/клиентов, отклоненные письма (NOQUEUE) и детальный лог доставки.
 - **Управление Fail2Ban:** Мониторинг активных блокировок по всем тюрьмам (SSH, Postfix, Dovecot) и мгновенный разбан (Unban) вредоносных IP в один клик.
 - **Управление почтовой очередью:** Просмотр, поиск и удаление сообщений в очереди Postfix прямо из панели управления.
 - Инструмент отправки поверочных (тестовых) писем от имени администратора.
-- Инструмент широковещательной рассылки (Broadcast) оповещений всем пользователям в домене или группе доменов.
+- **Глобальные рассылки (Broadcast)**: Безопасная отправка рассылок на весь сервер (все домены) с интерактивной инструкцией по настройке ограничений в Postfix.
 
 ### 4. Журнал аудита (Audit Logs)
-- Запись каждого критического действия в бэкенд-базу.
+- Запись каждого критического действия в бэкенд-базу (русифицированные типы событий).
 - Фиксация того, *кто*, *где* (в каком домене), *когда* и *какое* действие совершил (например: «create mailbox», «update domain»).
 - Доступ обычным администраторам к журналу ограничен только событиями в разрешенных им доменах.
 
