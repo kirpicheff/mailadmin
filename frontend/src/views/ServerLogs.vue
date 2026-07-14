@@ -214,6 +214,7 @@ const toggleTx = (id) => {
           <option :value="500">{{ t('server_logs.rows', { count: 500 }) }}</option>
           <option :value="1000">{{ t('server_logs.rows', { count: 1000 }) }}</option>
           <option :value="5000">{{ t('server_logs.rows', { count: 5000 }) }}</option>
+          <option :value="10000">{{ t('server_logs.rows', { count: 10000 }) }}</option>
         </select>
 
         <button @click="fetchLogs" class="p-2.5 bg-mail-blue-600 text-white rounded-xl hover:bg-mail-blue-700 transition-all shadow-lg shadow-mail-blue-500/20 active:scale-95">

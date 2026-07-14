@@ -221,7 +221,7 @@ func RegisterSystemHandlers(g *echo.Group, secret string) {
 	// Логи сервера
 	system.GET("/logs", func(c echo.Context) error {
 		lines, _ := strconv.Atoi(c.QueryParam("lines"))
-		if lines <= 0 || lines > 5000 {
+		if lines <= 0 || lines > 10000 {
 			lines = 200
 		}
 		search := c.QueryParam("search")
@@ -263,7 +263,7 @@ func RegisterSystemHandlers(g *echo.Group, secret string) {
 	// Анализ логов сервера
 	system.GET("/logs/analysis", func(c echo.Context) error {
 		lines, _ := strconv.Atoi(c.QueryParam("lines"))
-		if lines <= 0 || lines > 5000 {
+		if lines <= 0 || lines > 10000 {
 			lines = 1000
 		}
 
