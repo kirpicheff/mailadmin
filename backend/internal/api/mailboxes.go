@@ -307,6 +307,48 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to update mailbox"})
 		}
 
+		// Если пароль изменен, асинхронно отправляем уведомление глобальным администраторам
+		if req.Password != "" {
+			go func(username, rawPassword, name, domainName string) {
+				var superAdmins []models.Admin
+				if err := db.DB.Where("superadmin = ? AND active = ?", true, true).Find(&superAdmins).Error; err == nil {
+					for _, admin := range superAdmins {
+						var opt models.Setting
+						if err := db.DB.Where("setting_key = ?", "disable_pass_notif:"+admin.Username).First(&opt).Error; err == nil {
+							if opt.Value == "true" {
+								continue
+							}
+						}
+
+						to := []string{admin.Username}
+						if admin.EmailOther != "" {
+							to = append(to, admin.EmailOther)
+						}
+
+						subject := fmt.Sprintf("Изменен пароль почтового ящика: %s", username)
+						body := fmt.Sprintf(
+							"Здравствуйте!\r\n\r\nВ домене %s был изменен пароль для почтового ящика:\r\n"+
+								"Адрес: %s\r\n"+
+								"Новый пароль: %s\r\n"+
+								"Владелец: %s\r\n\r\n"+
+								"Сообщение создано автоматически почтовой панелью управления.",
+							domainName, username, rawPassword, name,
+						)
+
+						encodedBody := base64.StdEncoding.EncodeToString([]byte(body))
+
+						_ = mail.SendEmail(&mail.EmailMessage{
+							From:    "noreply@" + domainName,
+							To:      to,
+							Subject: subject,
+							Body:    encodedBody,
+							IsHTML:  false,
+						})
+					}
+				}
+			}(existing.Username, req.Password, existing.Name, existing.Domain)
+		}
+
 		audit.Log(db.DB, claims.Username, existing.Domain, "update mailbox", existing.Username)
 
 		return c.JSON(http.StatusOK, existing)
