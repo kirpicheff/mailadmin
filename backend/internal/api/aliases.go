@@ -88,6 +88,10 @@ func RegisterAliasHandlers(g *echo.Group, secret string) {
 			return c.JSON(http.StatusForbidden, map[string]string{"error": "access denied to this domain"})
 		}
 
+		if req.Goto == "[ALL_MAILBOXES]" && !claims.SuperAdmin {
+			return c.JSON(http.StatusForbidden, map[string]string{"error": "only superadmins can manage global aliases"})
+		}
+
 		alias := models.Alias{
 			Address:  req.Address,
 			Goto:     req.Goto,
@@ -131,6 +135,10 @@ func RegisterAliasHandlers(g *echo.Group, secret string) {
 			return err
 		}
 
+		if (existing.Goto == "[ALL_MAILBOXES]" || req.Goto == "[ALL_MAILBOXES]") && !claims.SuperAdmin {
+			return c.JSON(http.StatusForbidden, map[string]string{"error": "only superadmins can manage global aliases"})
+		}
+
 		updates := map[string]interface{}{
 			"goto":     req.Goto,
 			"active":   req.Active,
@@ -150,9 +158,15 @@ func RegisterAliasHandlers(g *echo.Group, secret string) {
 	aliasGroup.DELETE("/:address", func(c echo.Context) error {
 		address := c.Param("address")
 		var existing models.Alias
-		db.DB.Select("domain").Where("address = ?", address).First(&existing)
+		if err := db.DB.Where("address = ?", address).First(&existing).Error; err != nil {
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "alias not found"})
+		}
 
 		claims := c.Get("user").(*auth.Claims)
+		if existing.Goto == "[ALL_MAILBOXES]" && !claims.SuperAdmin {
+			return c.JSON(http.StatusForbidden, map[string]string{"error": "only superadmins can manage global aliases"})
+		}
+
 		if !hasDomainAccess(claims, existing.Domain) {
 			return c.JSON(http.StatusForbidden, map[string]string{"error": "access denied to this domain"})
 		}

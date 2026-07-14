@@ -178,6 +178,7 @@
       "domain_alias": "Delivered for {target}",
       "alias": "Forwarding / Alias"
     },
+    "all_mailboxes_display": "[All server users]",
     "errors": {
       "status_change": "Error changing status",
       "delete": "Error deleting"
@@ -215,6 +216,17 @@
     "goto_label": "Forward to (one or more addresses)",
     "goto_placeholder": "user1{'@'}example.com\nuser2{'@'}other.com",
     "goto_hint": "You can paste a comma-separated list or one address per line",
+    "all_mailboxes_label": "Server-wide mailing list (all domains)",
+    "all_mailboxes_hint": "The email will be delivered to all active mailboxes on the server",
+    "all_mailboxes_instructions_btn": "Postfix configuration guide",
+    "all_mailboxes_instructions_title": "Postfix Setup for Global Mailings",
+    "all_mailboxes_instructions_close": "Close",
+    "all_mailboxes_instructions_step1": "Step 1. Update Aliases SQL query",
+    "all_mailboxes_instructions_step1_desc": "In /etc/postfix/mysql_virtual_alias_maps.cf update the query parameter:",
+    "all_mailboxes_instructions_step2": "Step 2. Spam protection (block external emails)",
+    "all_mailboxes_instructions_step2_desc": "Create /etc/postfix/mysql_restrict_global_aliases.cf with the following content:",
+    "all_mailboxes_instructions_step3": "Step 3. Enable check in main.cf",
+    "all_mailboxes_instructions_step3_desc": "In /etc/postfix/main.cf inside smtpd_recipient_restrictions add the check right after permit_sasl_authenticated:",
     "status_label": "Active",
     "status_hint": "Enable/disable forwarding",
     "errors": {

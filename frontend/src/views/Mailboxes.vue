@@ -143,9 +143,16 @@
                 </td>
                 <td class="px-8 py-5">
                   <div v-if="item.type !== 'mailbox'" class="flex flex-col gap-1">
-                    <div v-for="addr in item.goto_list" :key="addr" class="text-xs text-slate-600 dark:text-slate-400 truncate max-w-xs font-bold">
-                      {{ addr }}
-                    </div>
+                    <template v-if="item.goto === '[ALL_MAILBOXES]'">
+                      <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-indigo-500/10 text-indigo-500 border border-indigo-500/20 w-fit">
+                        {{ t('mailboxes.all_mailboxes_display') }}
+                      </span>
+                    </template>
+                    <template v-else>
+                      <div v-for="addr in item.goto_list" :key="addr" class="text-xs text-slate-600 dark:text-slate-400 truncate max-w-xs font-bold">
+                        {{ addr }}
+                      </div>
+                    </template>
                   </div>
                   <span v-else class="text-slate-300 dark:text-slate-700">—</span>
                 </td>
