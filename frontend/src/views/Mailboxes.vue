@@ -69,6 +69,14 @@
             <span class="text-slate-200 dark:text-slate-800">|</span>
             <button @click="filterStatus = 'false'" :class="filterStatus === 'false' ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600 dark:hover:text-white'" class="transition-colors px-2">{{ t('common.inactive') }}</button>
         </div>
+
+        <!-- Alphabet Filter -->
+        <div class="flex flex-wrap justify-center items-center gap-1.5 pt-3 text-xs font-bold mt-2 border-t border-slate-100 dark:border-slate-800/30">
+            <span class="text-slate-400 uppercase tracking-widest text-[10px] font-black mr-1">{{ t('common.search') }}:</span>
+            <button @click="selectedLetter = ''" :class="!selectedLetter ? 'text-mail-blue-600 font-extrabold' : 'text-slate-400 hover:text-slate-600 dark:hover:text-white'" class="transition-colors px-1.5 py-0.5 rounded">{{ t('mailboxes.filters.all') }}</button>
+            <span class="text-slate-200 dark:text-slate-800">|</span>
+            <button v-for="letter in letters" :key="letter" @click="selectedLetter = letter" :class="selectedLetter === letter ? 'text-mail-blue-600 font-extrabold bg-slate-100 dark:bg-slate-800' : 'text-slate-400 hover:text-slate-600 dark:hover:text-white'" class="transition-colors px-1.5 py-0.5 rounded text-[11px] uppercase">{{ letter }}</button>
+        </div>
       </div>
     </div>
 
@@ -297,6 +305,8 @@ const selectedDomain = ref('')
 const searchQuery = ref('')
 const filterType = ref('all') // all, boxes, aliases, domain_aliases
 const filterStatus = ref('all') // all, true, false
+const selectedLetter = ref('')
+const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
 
 const mailboxes = ref([])
 const aliases = ref([])
@@ -381,7 +391,8 @@ const fetchData = async (reset = true) => {
       limit: pageSize.value,
       search: searchQuery.value || undefined,
       domain: searchQuery.value ? undefined : selectedDomain.value,
-      active: filterStatus.value !== 'all' ? filterStatus.value : undefined
+      active: filterStatus.value !== 'all' ? filterStatus.value : undefined,
+      letter: selectedLetter.value || undefined
     }
 
     const [boxesRes, aliasesRes, domAliasesRes] = await Promise.all([
@@ -418,11 +429,21 @@ const loadMore = () => {
 
 // Следим за поиском с задержкой (debounce)
 let searchTimeout
-watch(searchQuery, () => {
+watch(searchQuery, (newVal) => {
+  if (newVal) {
+    selectedLetter.value = ''
+  }
   clearTimeout(searchTimeout)
   searchTimeout = setTimeout(() => {
     fetchData(true)
   }, 500)
+})
+
+watch(selectedLetter, (newVal) => {
+  if (newVal) {
+    searchQuery.value = ''
+  }
+  fetchData(true)
 })
 
 watch(filterStatus, () => {

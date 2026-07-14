@@ -56,6 +56,11 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 			return c.JSON(http.StatusOK, []models.Mailbox{})
 		}
 
+		// Фильтр по первой букве (алфавитная пагинация)
+		if letter := c.QueryParam("letter"); letter != "" {
+			dbQuery = dbQuery.Where("mailbox.username LIKE ?", letter+"%")
+		}
+
 		// Фильтр по статусу
 		if active := c.QueryParam("active"); active != "" {
 			dbQuery = dbQuery.Where("mailbox.active = ?", active == "true")

@@ -49,6 +49,11 @@ func RegisterAliasHandlers(g *echo.Group, secret string) {
 			return c.JSON(http.StatusOK, []models.Alias{})
 		}
 
+		// Фильтр по первой букве (алфавитная пагинация)
+		if letter := c.QueryParam("letter"); letter != "" {
+			dbQuery = dbQuery.Where("address LIKE ?", letter+"%")
+		}
+
 		var total int64
 		dbQuery.Count(&total)
 
@@ -202,6 +207,11 @@ func RegisterAliasHandlers(g *echo.Group, secret string) {
 			dbQuery = dbQuery.Where("target_domain = ?", domain)
 		} else {
 			return c.JSON(http.StatusOK, []models.AliasDomain{})
+		}
+
+		// Фильтр по первой букве (алфавитная пагинация)
+		if letter := c.QueryParam("letter"); letter != "" {
+			dbQuery = dbQuery.Where("alias_domain LIKE ?", letter+"%")
 		}
 
 		var aliases []models.AliasDomain
