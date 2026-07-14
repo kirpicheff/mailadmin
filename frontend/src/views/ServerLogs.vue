@@ -63,17 +63,18 @@ const fetchLogs = async () => {
           lines: lines.value
         }
       })
-      analysisData.value = response.data || {
-        total_transactions: 0,
-        sent_count: 0,
-        deferred_count: 0,
-        bounced_count: 0,
-        reject_count: 0,
-        transactions: [],
-        rejects: [],
-        top_senders: [],
-        top_recipients: [],
-        top_clients: []
+      const data = response.data || {}
+      analysisData.value = {
+        total_transactions: data.total_transactions || 0,
+        sent_count: data.sent_count || 0,
+        deferred_count: data.deferred_count || 0,
+        bounced_count: data.bounced_count || 0,
+        reject_count: data.reject_count || 0,
+        transactions: data.transactions || [],
+        rejects: data.rejects || [],
+        top_senders: data.top_senders || [],
+        top_recipients: data.top_recipients || [],
+        top_clients: data.top_clients || []
       }
     } catch (error) {
       console.error('Failed to fetch log analysis:', error)
@@ -395,7 +396,7 @@ const toggleTx = (id) => {
                     <span class="text-xs font-bold text-slate-700 dark:text-slate-300">
                       {{ tx.from || 'unknown' }} &rarr; 
                       <span class="text-slate-500 font-medium">
-                        {{ tx.deliveries.length > 0 ? tx.deliveries.map(d => d.to).join(', ') : '?' }}
+                        {{ (tx.deliveries || []).length > 0 ? tx.deliveries.map(d => d.to).join(', ') : '?' }}
                       </span>
                     </span>
                     <span class="text-[10px] text-slate-400 font-mono mt-0.5">{{ tx.timestamp }} | Размер: {{ tx.size }} B</span>
@@ -405,7 +406,7 @@ const toggleTx = (id) => {
                 <div class="flex items-center gap-3">
                   <!-- Суммарный бейдж статуса -->
                   <span 
-                    v-if="tx.deliveries.length > 0"
+                    v-if="(tx.deliveries || []).length > 0"
                     class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest"
                     :class="{
                       'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20': tx.deliveries.every(d => d.status === 'sent'),
@@ -448,7 +449,7 @@ const toggleTx = (id) => {
                 <div class="space-y-2 mt-4">
                   <span class="text-slate-400 font-bold uppercase text-[9px] tracking-wider block">Попытки доставки (Deliveries)</span>
                   <div 
-                    v-for="(del, dIdx) in tx.deliveries" 
+                    v-for="(del, dIdx) in (tx.deliveries || [])" 
                     :key="dIdx"
                     class="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-200/60 dark:border-slate-800/60 space-y-2 text-xs"
                   >
