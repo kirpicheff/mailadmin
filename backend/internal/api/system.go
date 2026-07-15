@@ -550,6 +550,7 @@ func getSystemStats() SystemStats {
 	// 4. Mail Queue (через агент)
 	queueOut, err := sendToAgent(agent.ActionQueueStatus, nil, nil)
 	if err == nil && queueOut != "" {
+		queueOut = strings.TrimSpace(queueOut)
 		lines := strings.Split(queueOut, "\n")
 		lastLine := lines[len(lines)-1]
 		if strings.Contains(lastLine, "Mail queue is empty") {
