@@ -306,7 +306,7 @@ const filteredTransactions = computed(() => {
 
       <div v-else class="space-y-4">
         <!-- Карточки статистики -->
-        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <div class="glass-panel p-4 flex flex-col justify-between border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
             <span class="text-[10px] font-black uppercase tracking-wider text-slate-400">{{ t('server_logs.stat_total_tx') }}</span>
             <span class="text-3xl font-black mt-2 text-slate-800 dark:text-white">{{ analysisData.total_transactions }}</span>
@@ -323,9 +323,13 @@ const filteredTransactions = computed(() => {
             <span class="text-[10px] font-black uppercase tracking-wider text-red-500">{{ t('server_logs.stat_bounced') }}</span>
             <span class="text-3xl font-black mt-2 text-red-600 dark:text-red-400">{{ analysisData.bounced_count }}</span>
           </div>
-          <div class="glass-panel p-4 flex flex-col justify-between border border-slate-200 dark:border-slate-800 bg-purple-500/5 dark:bg-purple-500/10 col-span-2 md:col-span-1">
+          <div class="glass-panel p-4 flex flex-col justify-between border border-slate-200 dark:border-slate-800 bg-purple-500/5 dark:bg-purple-500/10">
             <span class="text-[10px] font-black uppercase tracking-wider text-purple-500">{{ t('server_logs.stat_rejected') }}</span>
             <span class="text-3xl font-black mt-2 text-purple-600 dark:text-purple-400">{{ analysisData.reject_count }}</span>
+          </div>
+          <div class="glass-panel p-4 flex flex-col justify-between border border-slate-200 dark:border-slate-800 bg-cyan-500/5 dark:bg-cyan-500/10">
+            <span class="text-[10px] font-black uppercase tracking-wider text-cyan-500">{{ t('average_delay') }}</span>
+            <span class="text-3xl font-black mt-2 text-cyan-600 dark:text-cyan-400">{{ analysisData.average_delay ? analysisData.average_delay.toFixed(1) + 's' : '0s' }}</span>
           </div>
         </div>
 
@@ -361,6 +365,30 @@ const filteredTransactions = computed(() => {
             <div v-if="analysisData.top_clients.length === 0" class="text-xs text-slate-400 italic">{{ t('common.none') }}</div>
             <ul v-else class="space-y-3">
               <li v-for="item in analysisData.top_clients" :key="item.key" class="flex justify-between items-center text-xs">
+                <span class="font-mono font-semibold text-slate-600 dark:text-slate-300">{{ item.key }}</span>
+                <span class="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded font-black text-slate-700 dark:text-slate-400">{{ item.value }}</span>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Топ DSN Ошибок -->
+          <div class="glass-panel p-5 border border-slate-200 dark:border-slate-800">
+            <h3 class="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 mb-4">{{ t('top_errors') }}</h3>
+            <div v-if="!analysisData.top_errors || analysisData.top_errors.length === 0" class="text-xs text-slate-400 italic">{{ t('common.none') }}</div>
+            <ul v-else class="space-y-3">
+              <li v-for="item in analysisData.top_errors" :key="item.key" class="flex justify-between items-center text-xs">
+                <span class="font-mono font-semibold text-slate-600 dark:text-slate-300">{{ item.key }}</span>
+                <span class="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded font-black text-slate-700 dark:text-slate-400">{{ item.value }}</span>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Топ Брутфорса SASL -->
+          <div class="glass-panel p-5 border border-slate-200 dark:border-slate-800">
+            <h3 class="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 mb-4">{{ t('top_sasl_failures') }}</h3>
+            <div v-if="!analysisData.top_sasl_failures || analysisData.top_sasl_failures.length === 0" class="text-xs text-slate-400 italic">{{ t('common.none') }}</div>
+            <ul v-else class="space-y-3">
+              <li v-for="item in analysisData.top_sasl_failures" :key="item.key" class="flex justify-between items-center text-xs">
                 <span class="font-mono font-semibold text-slate-600 dark:text-slate-300">{{ item.key }}</span>
                 <span class="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded font-black text-slate-700 dark:text-slate-400">{{ item.value }}</span>
               </li>
@@ -416,7 +444,7 @@ const filteredTransactions = computed(() => {
                   type="text" 
                   v-model="txSearch" 
                   :placeholder="t('common.search')" 
-                  class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-700 dark:text-slate-300 outline-none focus:border-mail-blue-500 w-48 transition-colors"
+                  class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-700 dark:text-slate-300 outline-none focus:border-mail-blue-500 w-72 transition-colors"
                 >
               </div>
               <label class="flex items-center gap-2 cursor-pointer">
@@ -500,7 +528,15 @@ const filteredTransactions = computed(() => {
                     class="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-200/60 dark:border-slate-800/60 space-y-1.5 text-xs"
                   >
                     <div class="flex justify-between items-center">
-                      <span class="font-bold text-slate-700 dark:text-slate-300">{{ del.to }}</span>
+                      <div class="flex items-center">
+                        <span class="font-bold text-slate-700 dark:text-slate-300">{{ del.to }}</span>
+                        <svg v-if="del.is_tls" title="TLS Encrypted" class="w-3.5 h-3.5 inline-block ml-1.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                        <span v-if="del.delay" :title="'Delays: ' + del.delays" class="text-[9px] font-mono text-slate-400 bg-slate-100 dark:bg-slate-800 px-1 rounded cursor-help ml-2 border border-slate-200 dark:border-slate-700">
+                          {{ del.delay }}s
+                        </span>
+                      </div>
                       <span 
                         class="px-1.5 py-0.5 rounded text-[9px] font-black tracking-wider"
                         :class="{

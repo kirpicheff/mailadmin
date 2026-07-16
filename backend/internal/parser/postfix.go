@@ -14,6 +14,9 @@ type DeliveryAttempt struct {
 	Status    string `json:"status"` // sent, deferred, bounced
 	DSN       string `json:"dsn"`    // код доставки, например 2.0.0 или 5.1.1
 	StatusMsg string `json:"status_msg"`
+	Delay     string `json:"delay"`
+	Delays    string `json:"delays"`
+	IsTLS     bool   `json:"is_tls"`
 }
 
 // Transaction представляет жизненный цикл одного письма по его QueueID
@@ -46,11 +49,14 @@ type AnalysisResult struct {
 	DeferredCount     int            `json:"deferred_count"`
 	BouncedCount      int            `json:"bounced_count"`
 	RejectCount       int            `json:"reject_count"`
+	AverageDelay      float64        `json:"average_delay"`
 	Transactions      []Transaction  `json:"transactions"`
 	Rejects           []RejectInfo   `json:"rejects"`
 	TopSenders        []KeyValue     `json:"top_senders"`
 	TopRecipients     []KeyValue     `json:"top_recipients"`
 	TopClients        []KeyValue     `json:"top_clients"`
+	TopErrors         []KeyValue     `json:"top_errors"`
+	TopSASLFailures   []KeyValue     `json:"top_sasl_failures"`
 }
 
 // KeyValue вспомогательная структура для топов
@@ -61,40 +67,40 @@ type KeyValue struct {
 
 // Регулярные выражения для разбора логов
 var (
-	// Базовый разбор строки лога Postfix
+	// Базовый разбор строки лога Postfix с захватом PID
 	// Пример: Jul 14 21:17:20 hostname postfix/smtpd[12345]: 4B87F40CCF: client=unknown[1.2.3.4]
-	// Также поддерживает ISO 8601: 2026-07-01T10:15:32.818512+03:00
-	lineRegex = regexp.MustCompile(`^([A-Z][a-z]{2}\s+\d+\s+\d{2}:\d{2}:\d{2}|\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:[+-]\d{2}:\d{2}|Z))\s+(\S+)\s+postfix/([^\[:]+)(?:\[\d+\])?:(?:\s+([0-9a-zA-Z]+):)?\s*(.*)$`)
+	lineRegex = regexp.MustCompile(`^([A-Z][a-z]{2}\s+\d+\s+\d{2}:\d{2}:\d{2}|\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:[+-]\d{2}:\d{2}|Z))\s+(\S+)\s+postfix/([^\[:]+)(?:\[(\d+)\])?:(?:\s+([0-9a-zA-Z]+):)?\s*(.*)$`)
 
 	// Разбор информации о клиенте в smtpd
-	// Пример: client=unknown[1.2.3.4] или client=localhost[127.0.0.1]
 	clientRegex = regexp.MustCompile(`client=([^\[]+)\[([^\]]+)\]`)
 
 	// Разбор отправителя и размера в qmgr
-	// Пример: from=<sender@example.com>, size=1432, nrcpt=1
 	qmgrRegex = regexp.MustCompile(`from=<([^>]*)>(?:,\s+size=(\d+))?`)
 
 	// Разбор cleanup (Message-ID)
-	// Пример: message-id=<unique@message.id>
 	messageIDRegex = regexp.MustCompile(`message-id=<([^>]*)>`)
 
-	// Разбор доставки smtp/local/virtual
-	// Пример: to=<recipient@dest.com>, relay=mail.dest.com[5.6.7.8]:25, delay=0.5, delays=0.1/0/0.3/0.1, dsn=2.0.0, status=sent (250 2.0.0 OK)
-	deliveryRegex = regexp.MustCompile(`to=<([^>]*)>(?:,\s+orig_to=<([^>]*)>)?,\s+relay=([^,\[]*)(?:\[([^\]]*)\](?::\d+)?)?,\s+.*?dsn=([^,\s]*),\s+status=(\w+)\s+\((.*)\)`)
+	// Разбор доставки smtp/local/virtual/lmtp
+	deliveryRegex = regexp.MustCompile(`to=<([^>]*)>(?:,\s+orig_to=<([^>]*)>)?,\s+relay=([^,\[]*)(?:\[([^\]]*)\](?::\d+)?)?,\s+.*?delay=([^,]+),\s+delays=([^,]+),\s+dsn=([^,\s]*),\s+status=(\w+)\s+\((.*)\)`)
 
 	// Разбор отказов (NOQUEUE reject в smtpd и milter-reject в cleanup)
-	// Пример: reject: RCPT from unknown[1.2.3.4]: 554 5.7.1 <user@dest.com>: Recipient address rejected: Access denied; from=<bad@sender.com> to=<user@dest.com> proto=ESMTP helo=<bad>
-	// Пример: milter-reject: END-OF-MESSAGE from unknown[104.164.62.40]: 5.7.1 Spam message rejected; from= to= proto=ESMTP helo=
 	rejectRegex = regexp.MustCompile(`(?:reject|milter-reject):\s+.*?from\s+([^:]+):\s+(.*?);\s+from=<?([^>\s]*)>?\s+to=<?([^>\s]*)>?`)
+
+	// Разбор SASL Authentication failed
+	saslFailRegex = regexp.MustCompile(`warning:.*?(?:unknown)?\[([0-9a-fA-F\.:]+)\].*?SASL [A-Z0-9]+ authentication failed`)
+
+	// Разбор установления TLS
+	tlsRegex = regexp.MustCompile(`(?:Anonymous|Trusted) TLS connection established`)
 )
 
 // ParsePostfixLogs анализирует срез строк лога Postfix
 func ParsePostfixLogs(lines []string) *AnalysisResult {
 	transactionsMap := make(map[string]*Transaction)
 	var rejects []RejectInfo
+	saslFailuresMap := make(map[string]int)
+	tlsSessions := make(map[string]bool)
 
 	// Вспомогательная мапа для хранения информации о клиенте по PID процесса smtpd
-	// так как smtpd логирует коннект и транзакцию в разных строках
 	clientSessions := make(map[string]struct{ Host, IP string })
 
 	for _, line := range lines {
@@ -104,15 +110,28 @@ func ParsePostfixLogs(lines []string) *AnalysisResult {
 		}
 
 		matches := lineRegex.FindStringSubmatch(line)
-		if len(matches) < 6 {
+		if len(matches) < 7 {
 			continue
 		}
 
 		timestamp := matches[1]
 		// hostname := matches[2]
 		component := matches[3]
-		queueID := matches[4]
-		payload := matches[5]
+		pid := matches[4]
+		queueID := matches[5]
+		payload := matches[6]
+
+		sessionKey := component + ":" + pid
+
+		if tlsRegex.MatchString(payload) {
+			tlsSessions[sessionKey] = true
+			continue
+		}
+
+		if saslMatches := saslFailRegex.FindStringSubmatch(payload); len(saslMatches) >= 2 {
+			saslFailuresMap[saslMatches[1]]++
+			continue
+		}
 
 		// Если это smtpd и есть информация о подключении клиента
 		if component == "smtpd" && strings.HasPrefix(payload, "connect from ") {
@@ -171,18 +190,19 @@ func ParsePostfixLogs(lines []string) *AnalysisResult {
 					}
 				}
 			case "smtp", "local", "virtual", "pipe", "lmtp":
-				if dMatches := deliveryRegex.FindStringSubmatch(payload); len(dMatches) >= 8 {
+				if dMatches := deliveryRegex.FindStringSubmatch(payload); len(dMatches) >= 10 {
 					to := dMatches[1]
 					relayHost := dMatches[3]
 					relayIP := dMatches[4]
-					dsn := dMatches[5]
-					status := dMatches[6]
-					statusMsg := dMatches[7]
+					delay := dMatches[5]
+					delays := dMatches[6]
+					dsn := dMatches[7]
+					status := dMatches[8]
+					statusMsg := dMatches[9]
 
 					// Проверяем наличие перенаправления (forwarded as)
 					if strings.Contains(statusMsg, "forwarded as ") {
 						tx.IsForward = true
-						// Здесь можно выцепить ID нового письма при необходимости
 					}
 
 					attempt := DeliveryAttempt{
@@ -192,6 +212,9 @@ func ParsePostfixLogs(lines []string) *AnalysisResult {
 						Status:    status,
 						DSN:       dsn,
 						StatusMsg: statusMsg,
+						Delay:     delay,
+						Delays:    delays,
+						IsTLS:     tlsSessions[sessionKey],
 					}
 					tx.Deliveries = append(tx.Deliveries, attempt)
 				}
@@ -209,6 +232,10 @@ func ParsePostfixLogs(lines []string) *AnalysisResult {
 	sendersMap := make(map[string]int)
 	recipientsMap := make(map[string]int)
 	clientsMap := make(map[string]int)
+	errorsMap := make(map[string]int)
+
+	var totalDelay float64
+	var delayCount int
 
 	for _, tx := range transactionsMap {
 		// Добавляем транзакцию в общий список
@@ -228,21 +255,35 @@ func ParsePostfixLogs(lines []string) *AnalysisResult {
 			if del.To != "" {
 				recipientsMap[del.To]++
 			}
+			if del.Delay != "" {
+				if d, err := strconv.ParseFloat(del.Delay, 64); err == nil {
+					totalDelay += d
+					delayCount++
+				}
+			}
 			switch del.Status {
 			case "sent":
 				result.SentCount++
 			case "deferred":
 				result.DeferredCount++
+				errorsMap[del.DSN]++
 			case "bounced":
 				result.BouncedCount++
+				errorsMap[del.DSN]++
 			}
 		}
+	}
+
+	if delayCount > 0 {
+		result.AverageDelay = totalDelay / float64(delayCount)
 	}
 
 	// Сортировка и выборка ТОПов
 	result.TopSenders = sortMapToKeyValues(sendersMap, 10)
 	result.TopRecipients = sortMapToKeyValues(recipientsMap, 10)
 	result.TopClients = sortMapToKeyValues(clientsMap, 10)
+	result.TopErrors = sortMapToKeyValues(errorsMap, 10)
+	result.TopSASLFailures = sortMapToKeyValues(saslFailuresMap, 10)
 
 	// Очищаем сессионные данные
 	_ = clientSessions
