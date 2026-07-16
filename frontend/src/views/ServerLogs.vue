@@ -176,6 +176,21 @@ const filteredTransactions = computed(() => {
   }
   return list
 })
+
+const rejectSearch = ref('')
+const filteredRejects = computed(() => {
+  let list = analysisData.value.rejects || []
+  const q = rejectSearch.value.toLowerCase().trim()
+  if (q) {
+    list = list.filter(rej => 
+      (rej.client && rej.client.toLowerCase().includes(q)) ||
+      (rej.from && rej.from.toLowerCase().includes(q)) ||
+      (rej.to && rej.to.toLowerCase().includes(q)) ||
+      (rej.reason && rej.reason.toLowerCase().includes(q))
+    )
+  }
+  return list
+})
 </script>
 
 <template>
@@ -398,13 +413,22 @@ const filteredTransactions = computed(() => {
 
         <!-- Таблица NOQUEUE отказов -->
         <div class="glass-panel border border-slate-200 dark:border-slate-800 overflow-hidden">
-          <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+          <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex flex-wrap justify-between items-center gap-4">
             <h3 class="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">{{ t('server_logs.table_rejects') }}</h3>
+            <div class="relative">
+              <svg class="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+              <input 
+                type="text" 
+                v-model="rejectSearch" 
+                :placeholder="t('common.search')" 
+                class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-700 dark:text-slate-300 outline-none focus:border-mail-blue-500 w-72 transition-colors"
+              >
+            </div>
           </div>
-          <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
-              <thead>
-                <tr class="border-b border-slate-200 dark:border-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-400 bg-slate-50/30 dark:bg-slate-900/20">
+          <div class="overflow-x-auto max-h-[500px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
+            <table class="w-full text-left border-collapse relative">
+              <thead class="sticky top-0 z-10">
+                <tr class="border-b border-slate-200 dark:border-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-400 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-sm">
                   <th class="px-5 py-3">{{ t('server_logs.col_time') }}</th>
                   <th class="px-5 py-3">{{ t('server_logs.col_client') }}</th>
                   <th class="px-5 py-3">{{ t('server_logs.col_from') }}</th>
@@ -413,11 +437,11 @@ const filteredTransactions = computed(() => {
                 </tr>
               </thead>
               <tbody>
-                <tr v-if="analysisData.rejects.length === 0">
+                <tr v-if="filteredRejects.length === 0">
                   <td colspan="5" class="px-5 py-6 text-center text-xs text-slate-400 italic">{{ t('common.none') }}</td>
                 </tr>
                 <tr 
-                  v-for="(rej, idx) in analysisData.rejects" 
+                  v-for="(rej, idx) in filteredRejects" 
                   :key="idx" 
                   class="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-slate-900/10 transition-colors text-xs"
                 >
@@ -453,7 +477,7 @@ const filteredTransactions = computed(() => {
               </label>
             </div>
           </div>
-          <div class="divide-y divide-slate-100 dark:divide-slate-800">
+          <div class="divide-y divide-slate-100 dark:divide-slate-800 max-h-[800px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
             <div v-if="filteredTransactions.length === 0" class="px-5 py-8 text-center text-xs text-slate-400 italic">
               {{ t('server_logs.no_transactions') }}
             </div>
