@@ -488,7 +488,7 @@ const filteredTransactions = computed(() => {
                       'bg-amber-500/10 text-amber-500 border border-amber-500/20': tx.deliveries.some(d => d.status === 'deferred') && !tx.deliveries.some(d => d.status === 'bounced'),
                     }"
                   >
-                    {{ tx.deliveries.some(d => d.status === 'bounced') ? 'Bounced' : tx.deliveries.some(d => d.status === 'deferred') ? 'Deferred' : 'Sent' }}
+                    {{ tx.deliveries.some(d => d.status === 'bounced') ? t('server_logs.delivery_status_bounced') : tx.deliveries.some(d => d.status === 'deferred') ? t('server_logs.delivery_status_deferred') : t('server_logs.delivery_status_sent') }}
                   </span>
                   
                   <!-- Стрелочка развертывания -->
