@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import api from '@/api/axios'
 
@@ -149,6 +149,14 @@ const expandedTx = ref({})
 const toggleTx = (id) => {
   expandedTx.value[id] = !expandedTx.value[id]
 }
+
+const showSpam = ref(false)
+const filteredTransactions = computed(() => {
+  if (showSpam.value) {
+    return analysisData.value.transactions
+  }
+  return analysisData.value.transactions.filter(tx => tx.from && tx.from !== 'unknown' && tx.size > 0)
+})
 </script>
 
 <template>
@@ -271,13 +279,13 @@ const toggleTx = (id) => {
     </div>
 
     <!-- ВКЛАДКА: АНАЛИЗ ЛОГОВ -->
-    <div v-else class="flex-1 overflow-y-auto pr-2 space-y-6">
+    <div v-else class="flex-1 overflow-y-auto pr-2 space-y-4">
       <div v-if="loading" class="flex flex-col items-center justify-center h-64">
         <div class="w-10 h-10 border-4 border-mail-blue-500/20 border-t-mail-blue-500 rounded-full animate-spin"></div>
         <p class="text-slate-500 font-bold uppercase tracking-widest text-[10px] mt-4 animate-pulse">{{ t('common.loading') }}</p>
       </div>
 
-      <div v-else class="space-y-6">
+      <div v-else class="space-y-4">
         <!-- Карточки статистики -->
         <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
           <div class="glass-panel p-4 flex flex-col justify-between border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
@@ -303,7 +311,7 @@ const toggleTx = (id) => {
         </div>
 
         <!-- Списки ТОПов -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <!-- Топ Отправителей -->
           <div class="glass-panel p-5 border border-slate-200 dark:border-slate-800">
             <h3 class="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 mb-4">{{ t('server_logs.top_senders') }}</h3>
@@ -379,17 +387,22 @@ const toggleTx = (id) => {
 
         <!-- Список транзакций очереди / истории писем -->
         <div class="glass-panel border border-slate-200 dark:border-slate-800 overflow-hidden">
-          <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-            <h3 class="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">Транзакции писем (Очередь)</h3>
+          <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex justify-between items-center">
+            <h3 class="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">{{ t('server_logs.queue_title') }}</h3>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" v-model="showSpam" class="rounded border-slate-300 text-mail-blue-600 focus:ring-mail-blue-500">
+              <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{{ t('server_logs.show_spam') }}</span>
+            </label>
           </div>
           <div class="divide-y divide-slate-100 dark:divide-slate-800">
-            <div v-if="analysisData.transactions.length === 0" class="px-5 py-8 text-center text-xs text-slate-400 italic">
+            <div v-if="filteredTransactions.length === 0" class="px-5 py-8 text-center text-xs text-slate-400 italic">
               {{ t('server_logs.no_transactions') }}
             </div>
             <div 
-              v-for="tx in analysisData.transactions" 
+              v-for="tx in filteredTransactions" 
               :key="tx.queue_id"
-              class="p-5 hover:bg-slate-50/30 dark:hover:bg-slate-900/10 transition-colors"
+              class="p-4 hover:bg-slate-50/30 dark:hover:bg-slate-900/10 transition-colors"
+              :class="{'opacity-60 grayscale': !tx.from || tx.from === 'unknown' || tx.size === 0}"
             >
               <div @click="toggleTx(tx.queue_id)" class="flex flex-wrap items-center justify-between gap-4 cursor-pointer">
                 <div class="flex items-center gap-3">
@@ -436,7 +449,7 @@ const toggleTx = (id) => {
               <div v-if="expandedTx[tx.queue_id]" class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800/80 space-y-3 animate-in slide-in-from-top-1 duration-200">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                   <div>
-                    <span class="text-slate-400 font-bold uppercase text-[9px] tracking-wider">Отправитель (Client)</span>
+                    <span class="text-slate-400 font-bold uppercase text-[9px] tracking-wider">{{ t('server_logs.sender_client') }}</span>
                     <p class="font-semibold text-slate-700 dark:text-slate-300 mt-0.5">
                       {{ tx.client_host }} <span class="text-slate-400 font-mono">[{{ tx.client_ip }}]</span>
                     </p>
@@ -448,35 +461,38 @@ const toggleTx = (id) => {
                 </div>
 
                 <!-- Попытки доставки -->
-                <div class="space-y-2 mt-4">
-                  <span class="text-slate-400 font-bold uppercase text-[9px] tracking-wider block">Попытки доставки (Deliveries)</span>
+                <div class="space-y-1.5 mt-3">
+                  <span class="text-slate-400 font-bold uppercase text-[9px] tracking-wider block">{{ t('server_logs.deliveries_title') }}</span>
                   <div 
                     v-for="(del, dIdx) in (tx.deliveries || [])" 
                     :key="dIdx"
-                    class="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-200/60 dark:border-slate-800/60 space-y-2 text-xs"
+                    class="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-200/60 dark:border-slate-800/60 space-y-1.5 text-xs"
                   >
                     <div class="flex justify-between items-center">
-                      <span class="font-bold text-slate-700 dark:text-slate-300">Кому: {{ del.to }}</span>
+                      <span class="font-bold text-slate-700 dark:text-slate-300">{{ del.to }}</span>
                       <span 
-                        class="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider"
+                        class="px-1.5 py-0.5 rounded text-[9px] font-black tracking-wider"
                         :class="{
-                          'bg-emerald-500/10 text-emerald-500': del.status === 'sent',
-                          'bg-red-500/10 text-red-500': del.status === 'bounced',
-                          'bg-amber-500/10 text-amber-500': del.status === 'deferred',
+                          'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20': del.status === 'sent',
+                          'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20': del.status === 'bounced',
+                          'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20': del.status === 'deferred',
                         }"
                       >
-                        {{ del.status }}
+                        {{ del.status === 'sent' ? t('server_logs.delivery_status_sent') : del.status === 'bounced' ? t('server_logs.delivery_status_bounced') : del.status === 'deferred' ? t('server_logs.delivery_status_deferred') : del.status }}
                       </span>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] text-slate-500">
                       <div>
-                        <span class="font-semibold">Релей:</span> {{ del.relay_host }} <span class="font-mono text-[10px] bg-slate-200 dark:bg-slate-800 px-1 rounded">[{{ del.relay_ip }}]</span>
+                        <span class="font-semibold">{{ t('server_logs.relay') }}:</span> {{ del.relay_host }} <span class="font-mono text-[10px] bg-slate-200 dark:bg-slate-800 px-1 rounded">[{{ del.relay_ip }}]</span>
                       </div>
                       <div>
-                        <span class="font-semibold">DSN-код:</span> <span class="font-mono font-bold">{{ del.dsn }}</span>
+                        <span class="font-semibold">{{ t('server_logs.dsn') }}:</span> <span class="font-mono font-bold">{{ del.dsn }}</span>
                       </div>
                     </div>
-                    <p class="font-mono text-[11px] bg-slate-950 text-slate-300 p-2 rounded border border-slate-800 select-all leading-normal">{{ del.status_msg }}</p>
+                    <div class="mt-1">
+                      <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{{ t('server_logs.remote_response') }}</span>
+                      <p class="font-mono text-[11px] text-slate-600 dark:text-slate-400 bg-white/50 dark:bg-slate-950 p-2 rounded border border-slate-200 dark:border-slate-800 select-all leading-normal mt-1">{{ del.status_msg }}</p>
+                    </div>
                   </div>
                 </div>
               </div>

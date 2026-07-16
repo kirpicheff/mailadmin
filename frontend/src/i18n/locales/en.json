@@ -570,6 +570,16 @@
     "col_from": "Sender",
     "col_to": "Recipient",
     "col_reason": "Reason / Server Response",
-    "no_transactions": "No transactions found in this range"
+    "no_transactions": "No transactions found in this range",
+    "queue_title": "Email Transactions (Queue)",
+    "show_spam": "Show empty transactions (spam)",
+    "sender_client": "Sender (Client)",
+    "deliveries_title": "Delivery Attempts",
+    "delivery_status_sent": "🟢 Delivered (Success)",
+    "delivery_status_bounced": "🔴 Delivery Error (Bounced)",
+    "delivery_status_deferred": "🟠 Deferred (Will retry)",
+    "relay": "Recipient Server (Relay)",
+    "dsn": "Response Code (DSN)",
+    "remote_response": "Server Response"
   }
 }
