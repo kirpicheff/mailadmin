@@ -170,7 +170,7 @@ func ParsePostfixLogs(lines []string) *AnalysisResult {
 						}
 					}
 				}
-			case "smtp", "local", "virtual", "pipe":
+			case "smtp", "local", "virtual", "pipe", "lmtp":
 				if dMatches := deliveryRegex.FindStringSubmatch(payload); len(dMatches) >= 8 {
 					to := dMatches[1]
 					relayHost := dMatches[3]
