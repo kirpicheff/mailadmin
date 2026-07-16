@@ -82,9 +82,10 @@ var (
 	// Пример: to=<recipient@dest.com>, relay=mail.dest.com[5.6.7.8]:25, delay=0.5, delays=0.1/0/0.3/0.1, dsn=2.0.0, status=sent (250 2.0.0 OK)
 	deliveryRegex = regexp.MustCompile(`to=<([^>]*)>(?:,\s+orig_to=<([^>]*)>)?,\s+relay=([^,\[]*)(?:\[([^\]]*)\](?::\d+)?)?,\s+.*?dsn=([^,\s]*),\s+status=(\w+)\s+\((.*)\)`)
 
-	// Разбор NOQUEUE reject в smtpd
+	// Разбор отказов (NOQUEUE reject в smtpd и milter-reject в cleanup)
 	// Пример: reject: RCPT from unknown[1.2.3.4]: 554 5.7.1 <user@dest.com>: Recipient address rejected: Access denied; from=<bad@sender.com> to=<user@dest.com> proto=ESMTP helo=<bad>
-	rejectRegex = regexp.MustCompile(`reject:\s+.*?from\s+([^:]+):\s+(\d{3}\s+[\d\.]+.*?);\s+from=<([^>]*)>\s+to=<([^>]*)>`)
+	// Пример: milter-reject: END-OF-MESSAGE from unknown[104.164.62.40]: 5.7.1 Spam message rejected; from= to= proto=ESMTP helo=
+	rejectRegex = regexp.MustCompile(`(?:reject|milter-reject):\s+.*?from\s+([^:]+):\s+(.*?);\s+from=<?([^>\s]*)>?\s+to=<?([^>\s]*)>?`)
 )
 
 // ParsePostfixLogs анализирует срез строк лога Postfix
@@ -117,9 +118,25 @@ func ParsePostfixLogs(lines []string) *AnalysisResult {
 		if component == "smtpd" && strings.HasPrefix(payload, "connect from ") {
 			clientInfo := strings.TrimPrefix(payload, "connect from ")
 			if cMatches := clientRegex.FindStringSubmatch("client=" + clientInfo); len(cMatches) >= 3 {
-				// Запоминаем клиента (в реальном логе мы не знаем PID здесь напрямую без парсинга процесса, 
-				// но можем временно привязать сессию, если это важно. В данном случае мы можем использовать
-				// QueueID, когда он появится, так как postfix пишет client= при установлении QueueID)
+				// Запоминаем клиента
+			}
+		}
+
+		// Проверка на reject (как NOQUEUE, так и milter-reject)
+		if rMatches := rejectRegex.FindStringSubmatch(payload); len(rMatches) >= 5 {
+			rejects = append(rejects, RejectInfo{
+				Timestamp: timestamp,
+				Client:    rMatches[1],
+				Reason:    rMatches[2],
+				From:      rMatches[3],
+				To:        rMatches[4],
+			})
+			if queueID == "NOQUEUE" || strings.Contains(payload, "milter-reject:") {
+				// Удаляем из транзакций, если он туда уже попал (чтобы не дублировать спам в основном списке)
+				if queueID != "NOQUEUE" {
+					delete(transactionsMap, queueID)
+				}
+				continue
 			}
 		}
 
@@ -178,17 +195,6 @@ func ParsePostfixLogs(lines []string) *AnalysisResult {
 					}
 					tx.Deliveries = append(tx.Deliveries, attempt)
 				}
-			}
-		} else if queueID == "NOQUEUE" {
-			// Обработка отказов без помещения в очередь
-			if rMatches := rejectRegex.FindStringSubmatch(payload); len(rMatches) >= 5 {
-				rejects = append(rejects, RejectInfo{
-					Timestamp: timestamp,
-					Client:    rMatches[1],
-					Reason:    rMatches[2],
-					From:      rMatches[3],
-					To:        rMatches[4],
-				})
 			}
 		}
 	}

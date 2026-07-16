@@ -564,7 +564,7 @@
     "top_senders": "Top Senders",
     "top_recipients": "Top Recipients",
     "top_clients": "Top Client IPs",
-    "table_rejects": "Rejected Incoming Mail (NOQUEUE)",
+    "table_rejects": "Rejected Mail (Rejects / NOQUEUE)",
     "col_time": "Time",
     "col_client": "Client",
     "col_from": "Sender",

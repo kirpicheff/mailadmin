@@ -151,11 +151,30 @@ const toggleTx = (id) => {
 }
 
 const showSpam = ref(false)
+const txSearch = ref('')
 const filteredTransactions = computed(() => {
-  if (showSpam.value) {
-    return analysisData.value.transactions
+  let list = analysisData.value.transactions
+  if (!showSpam.value) {
+    list = list.filter(tx => tx.from && tx.from !== 'unknown' && tx.size > 0)
   }
-  return analysisData.value.transactions.filter(tx => tx.from && tx.from !== 'unknown' && tx.size > 0)
+  
+  const q = txSearch.value.toLowerCase().trim()
+  if (q) {
+    list = list.filter(tx => 
+      (tx.queue_id && tx.queue_id.toLowerCase().includes(q)) ||
+      (tx.from && tx.from.toLowerCase().includes(q)) ||
+      (tx.client_host && tx.client_host.toLowerCase().includes(q)) ||
+      (tx.client_ip && tx.client_ip.toLowerCase().includes(q)) ||
+      (tx.message_id && tx.message_id.toLowerCase().includes(q)) ||
+      (tx.deliveries && tx.deliveries.some(d => 
+        (d.to && d.to.toLowerCase().includes(q)) ||
+        (d.status_msg && d.status_msg.toLowerCase().includes(q)) ||
+        (d.relay_host && d.relay_host.toLowerCase().includes(q)) ||
+        (d.dsn && d.dsn.toLowerCase().includes(q))
+      ))
+    )
+  }
+  return list
 })
 </script>
 
@@ -387,12 +406,24 @@ const filteredTransactions = computed(() => {
 
         <!-- Список транзакций очереди / истории писем -->
         <div class="glass-panel border border-slate-200 dark:border-slate-800 overflow-hidden">
-          <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex justify-between items-center">
+          <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex flex-wrap justify-between items-center gap-4">
             <h3 class="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">{{ t('server_logs.queue_title') }}</h3>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" v-model="showSpam" class="rounded border-slate-300 text-mail-blue-600 focus:ring-mail-blue-500">
-              <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{{ t('server_logs.show_spam') }}</span>
-            </label>
+            
+            <div class="flex items-center gap-4">
+              <div class="relative">
+                <svg class="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                <input 
+                  type="text" 
+                  v-model="txSearch" 
+                  :placeholder="t('common.search')" 
+                  class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-700 dark:text-slate-300 outline-none focus:border-mail-blue-500 w-48 transition-colors"
+                >
+              </div>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" v-model="showSpam" class="rounded border-slate-300 text-mail-blue-600 focus:ring-mail-blue-500">
+                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{{ t('server_logs.show_spam') }}</span>
+              </label>
+            </div>
           </div>
           <div class="divide-y divide-slate-100 dark:divide-slate-800">
             <div v-if="filteredTransactions.length === 0" class="px-5 py-8 text-center text-xs text-slate-400 italic">
