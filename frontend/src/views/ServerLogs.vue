@@ -70,11 +70,14 @@ const fetchLogs = async () => {
         deferred_count: data.deferred_count || 0,
         bounced_count: data.bounced_count || 0,
         reject_count: data.reject_count || 0,
+        average_delay: data.average_delay || 0,
         transactions: data.transactions || [],
         rejects: data.rejects || [],
         top_senders: data.top_senders || [],
         top_recipients: data.top_recipients || [],
-        top_clients: data.top_clients || []
+        top_clients: data.top_clients || [],
+        top_errors: data.top_errors || [],
+        top_sasl_failures: data.top_sasl_failures || []
       }
     } catch (error) {
       console.error('Failed to fetch log analysis:', error)
