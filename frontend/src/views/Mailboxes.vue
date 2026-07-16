@@ -389,8 +389,8 @@ const fetchData = async (reset = true) => {
     const params = {
       page: currentPage.value,
       limit: pageSize.value,
-      search: searchQuery.value.trim() || undefined,
-      domain: searchQuery.value ? undefined : selectedDomain.value,
+      search: searchQuery.value?.trim() || undefined,
+      domain: searchQuery.value?.trim() ? undefined : selectedDomain.value,
       active: filterStatus.value !== 'all' ? filterStatus.value : undefined,
       letter: selectedLetter.value || undefined
     }
@@ -473,7 +473,7 @@ const filteredItems = computed(() => {
         address: al.address,
         type: 'alias',
         typeName: al.address.startsWith('@') ? t('mailboxes.types.catch_all') : t('mailboxes.types.alias'),
-        goto_list: al.goto.split(',').map(s => s.trim()).filter(s => s)
+        goto_list: al.goto ? al.goto.split(',').map(s => s.trim()).filter(s => s) : []
       })))
   }
 
@@ -488,7 +488,7 @@ const filteredItems = computed(() => {
     })))
   }
 
-  if (searchQuery.value) {
+  if (searchQuery.value?.trim()) {
     const q = searchQuery.value.trim().toLowerCase()
     items = items.filter(i => 
       i.address.toLowerCase().includes(q) || 

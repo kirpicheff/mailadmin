@@ -40,7 +40,7 @@ const fetchLogs = async () => {
       const response = await api.get('/system/logs', {
         params: {
           lines: lines.value,
-          search: search.value.trim()
+          search: search.value?.trim() || ''
         }
       })
       const rawLogs = response.data.logs || ''
@@ -138,8 +138,9 @@ const getLineStyle = (line) => {
 }
 
 const highlightMatch = (line) => {
-  if (!search.value) return line
-  const regex = new RegExp(`(${search.value})`, 'gi')
+  const q = search.value?.trim()
+  if (!q) return line
+  const regex = new RegExp(`(${q})`, 'gi')
   return line.replace(regex, '<mark class="bg-mail-blue-500/40 text-white rounded px-0.5">$1</mark>')
 }
 
