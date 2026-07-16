@@ -343,13 +343,13 @@ const filteredRejects = computed(() => {
             <span class="text-3xl font-black mt-2 text-purple-600 dark:text-purple-400">{{ analysisData.reject_count }}</span>
           </div>
           <div class="glass-panel p-4 flex flex-col justify-between border border-slate-200 dark:border-slate-800 bg-cyan-500/5 dark:bg-cyan-500/10">
-            <span class="text-[10px] font-black uppercase tracking-wider text-cyan-500">{{ t('average_delay') }}</span>
+            <span class="text-[10px] font-black uppercase tracking-wider text-cyan-500">{{ t('server_logs.average_delay') }}</span>
             <span class="text-3xl font-black mt-2 text-cyan-600 dark:text-cyan-400">{{ analysisData.average_delay ? analysisData.average_delay.toFixed(1) + 's' : '0s' }}</span>
           </div>
         </div>
 
         <!-- Списки ТОПов -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
           <!-- Топ Отправителей -->
           <div class="glass-panel p-5 border border-slate-200 dark:border-slate-800">
             <h3 class="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 mb-4">{{ t('server_logs.top_senders') }}</h3>
@@ -388,7 +388,7 @@ const filteredRejects = computed(() => {
 
           <!-- Топ DSN Ошибок -->
           <div class="glass-panel p-5 border border-slate-200 dark:border-slate-800">
-            <h3 class="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 mb-4">{{ t('top_errors') }}</h3>
+            <h3 class="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 mb-4">{{ t('server_logs.top_errors') }}</h3>
             <div v-if="!analysisData.top_errors || analysisData.top_errors.length === 0" class="text-xs text-slate-400 italic">{{ t('common.none') }}</div>
             <ul v-else class="space-y-3">
               <li v-for="item in analysisData.top_errors" :key="item.key" class="flex justify-between items-center text-xs">
@@ -400,7 +400,7 @@ const filteredRejects = computed(() => {
 
           <!-- Топ Брутфорса SASL -->
           <div class="glass-panel p-5 border border-slate-200 dark:border-slate-800">
-            <h3 class="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 mb-4">{{ t('top_sasl_failures') }}</h3>
+            <h3 class="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 mb-4">{{ t('server_logs.top_sasl_failures') }}</h3>
             <div v-if="!analysisData.top_sasl_failures || analysisData.top_sasl_failures.length === 0" class="text-xs text-slate-400 italic">{{ t('common.none') }}</div>
             <ul v-else class="space-y-3">
               <li v-for="item in analysisData.top_sasl_failures" :key="item.key" class="flex justify-between items-center text-xs">
@@ -413,7 +413,7 @@ const filteredRejects = computed(() => {
 
         <!-- Таблица NOQUEUE отказов -->
         <div class="glass-panel border border-slate-200 dark:border-slate-800 overflow-hidden">
-          <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex flex-wrap justify-between items-center gap-4">
+          <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex flex-wrap items-center gap-6">
             <h3 class="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">{{ t('server_logs.table_rejects') }}</h3>
             <div class="relative">
               <svg class="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
@@ -458,10 +458,10 @@ const filteredRejects = computed(() => {
 
         <!-- Список транзакций очереди / истории писем -->
         <div class="glass-panel border border-slate-200 dark:border-slate-800 overflow-hidden">
-          <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex flex-wrap justify-between items-center gap-4">
+          <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex flex-wrap items-center gap-6">
             <h3 class="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">{{ t('server_logs.queue_title') }}</h3>
             
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-4 flex-1">
               <div class="relative">
                 <svg class="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                 <input 
@@ -471,7 +471,7 @@ const filteredRejects = computed(() => {
                   class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-700 dark:text-slate-300 outline-none focus:border-mail-blue-500 w-72 transition-colors"
                 >
               </div>
-              <label class="flex items-center gap-2 cursor-pointer">
+              <label class="flex items-center gap-2 cursor-pointer ml-auto">
                 <input type="checkbox" v-model="showSpam" class="rounded border-slate-300 text-mail-blue-600 focus:ring-mail-blue-500">
                 <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{{ t('server_logs.show_spam') }}</span>
               </label>
