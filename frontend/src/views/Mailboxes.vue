@@ -389,7 +389,7 @@ const fetchData = async (reset = true) => {
     const params = {
       page: currentPage.value,
       limit: pageSize.value,
-      search: searchQuery.value || undefined,
+      search: searchQuery.value.trim() || undefined,
       domain: searchQuery.value ? undefined : selectedDomain.value,
       active: filterStatus.value !== 'all' ? filterStatus.value : undefined,
       letter: selectedLetter.value || undefined
@@ -489,7 +489,7 @@ const filteredItems = computed(() => {
   }
 
   if (searchQuery.value) {
-    const q = searchQuery.value.toLowerCase()
+    const q = searchQuery.value.trim().toLowerCase()
     items = items.filter(i => 
       i.address.toLowerCase().includes(q) || 
       (i.name && i.name.toLowerCase().includes(q)) ||

@@ -312,7 +312,7 @@ const filters = reactive({
 const fetchDomains = async () => {
   try {
     const params = {}
-    if (filters.search) params.search = filters.search
+    if (filters.search.trim()) params.search = filters.search.trim()
     if (filters.active !== 'all') params.active = filters.active
     const { data } = await api.get('/domains', { params })
     domains.value = data

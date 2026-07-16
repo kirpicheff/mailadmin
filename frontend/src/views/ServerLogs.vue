@@ -40,7 +40,7 @@ const fetchLogs = async () => {
       const response = await api.get('/system/logs', {
         params: {
           lines: lines.value,
-          search: search.value
+          search: search.value.trim()
         }
       })
       const rawLogs = response.data.logs || ''
