@@ -159,7 +159,10 @@ const toggleTx = (id) => {
   expandedTx.value[id] = !expandedTx.value[id]
 }
 
+const showTransactionsBlock = ref(true)
+const showRejectsBlock = ref(true)
 const showSpam = ref(false)
+const showDeferred = ref(false)
 const txSearch = ref('')
 const filteredTransactions = computed(() => {
   let list = analysisData.value.transactions
@@ -167,6 +170,10 @@ const filteredTransactions = computed(() => {
     // tx.size > 0 guarantees it's a real email that reached qmgr,
     // even if tx.from is empty (Null Sender for bounces/notifications).
     list = list.filter(tx => tx.size > 0)
+  }
+  
+  if (showDeferred.value) {
+    list = list.filter(tx => tx.deliveries && tx.deliveries.some(d => d.status === 'deferred'))
   }
   
   const q = txSearch.value.toLowerCase().trim()
@@ -341,7 +348,7 @@ const filteredRejects = computed(() => {
             <span class="text-[10px] font-black uppercase tracking-wider text-emerald-500">{{ t('server_logs.stat_sent') }}</span>
             <span class="text-3xl font-black mt-2 text-emerald-600 dark:text-emerald-400">{{ analysisData.sent_count }}</span>
           </div>
-          <div class="glass-panel p-4 flex flex-col justify-between border border-slate-200 dark:border-slate-800 bg-amber-500/5 dark:bg-amber-500/10">
+          <div @click="showDeferred = !showDeferred" class="glass-panel p-4 flex flex-col justify-between border border-slate-200 dark:border-slate-800 bg-amber-500/5 dark:bg-amber-500/10 cursor-pointer hover:bg-amber-500/20 transition-all" :class="{'ring-2 ring-amber-500': showDeferred}">
             <span class="text-[10px] font-black uppercase tracking-wider text-amber-500">{{ t('server_logs.stat_deferred') }}</span>
             <span class="text-3xl font-black mt-2 text-amber-600 dark:text-amber-400">{{ analysisData.deferred_count }}</span>
           </div>
@@ -425,57 +432,15 @@ const filteredRejects = computed(() => {
           </div>
         </div>
 
-        <!-- Таблица NOQUEUE отказов -->
-        <div class="glass-panel border border-slate-200 dark:border-slate-800 overflow-hidden">
-          <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex flex-wrap items-center gap-6">
-            <h3 class="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">{{ t('server_logs.table_rejects') }}</h3>
-            <div class="relative">
-              <svg class="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-              <input 
-                type="text" 
-                v-model="rejectSearch" 
-                :placeholder="t('common.search')" 
-                class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-700 dark:text-slate-300 outline-none focus:border-mail-blue-500 w-72 transition-colors"
-              >
-            </div>
-          </div>
-          <div class="overflow-x-auto max-h-[500px] overflow-y-auto scrollbar-panel">
-            <table class="w-full text-left border-collapse relative">
-              <thead class="sticky top-0 z-10">
-                <tr class="border-b border-slate-200 dark:border-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-400 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-sm">
-                  <th class="px-5 py-3">{{ t('server_logs.col_time') }}</th>
-                  <th class="px-5 py-3">{{ t('server_logs.col_client') }}</th>
-                  <th class="px-5 py-3">{{ t('server_logs.col_from') }}</th>
-                  <th class="px-5 py-3">{{ t('server_logs.col_to') }}</th>
-                  <th class="px-5 py-3">{{ t('server_logs.col_reason') }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-if="filteredRejects.length === 0">
-                  <td colspan="5" class="px-5 py-6 text-center text-xs text-slate-400 italic">{{ t('common.none') }}</td>
-                </tr>
-                <tr 
-                  v-for="(rej, idx) in filteredRejects" 
-                  :key="idx" 
-                  class="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-slate-900/10 transition-colors text-xs"
-                >
-                  <td class="px-5 py-3.5 font-mono text-slate-400 whitespace-nowrap">{{ rej.timestamp }}</td>
-                  <td class="px-5 py-3.5 font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">{{ rej.client }}</td>
-                  <td class="px-5 py-3.5 font-semibold text-slate-600 dark:text-slate-400 truncate max-w-[150px]">{{ rej.from }}</td>
-                  <td class="px-5 py-3.5 font-semibold text-slate-600 dark:text-slate-400 truncate max-w-[150px]">{{ rej.to }}</td>
-                  <td class="px-5 py-3.5 text-red-500 font-medium font-mono select-all">{{ rej.reason }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
         <!-- Список транзакций очереди / истории писем -->
         <div class="glass-panel border border-slate-200 dark:border-slate-800 overflow-hidden">
-          <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex flex-wrap items-center gap-6">
-            <h3 class="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">{{ t('server_logs.queue_title') }}</h3>
+          <div @click="showTransactionsBlock = !showTransactionsBlock" class="cursor-pointer px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex flex-wrap items-center gap-6 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors">
+            <div class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-slate-400 transition-transform duration-300" :class="{ '-rotate-90': !showTransactionsBlock }" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" /></svg>
+              <h3 class="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">{{ t('server_logs.queue_title') }}</h3>
+            </div>
             
-            <div class="flex items-center gap-4 flex-1">
+            <div class="flex items-center gap-4 flex-1" @click.stop>
               <div class="relative">
                 <svg class="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                 <input 
@@ -486,12 +451,16 @@ const filteredRejects = computed(() => {
                 >
               </div>
               <label class="flex items-center gap-2 cursor-pointer ml-auto">
+                <input type="checkbox" v-model="showDeferred" class="rounded border-slate-300 text-amber-500 focus:ring-amber-500">
+                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{{ te('server_logs.show_deferred') ? t('server_logs.show_deferred') : 'Только отложенные' }}</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" v-model="showSpam" class="rounded border-slate-300 text-mail-blue-600 focus:ring-mail-blue-500">
                 <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{{ t('server_logs.show_spam') }}</span>
               </label>
             </div>
           </div>
-          <div class="divide-y divide-slate-100 dark:divide-slate-800 max-h-[800px] overflow-y-auto scrollbar-panel">
+          <div v-show="showTransactionsBlock" class="divide-y divide-slate-100 dark:divide-slate-800 max-h-[800px] overflow-y-auto scrollbar-panel">
             <div v-if="filteredTransactions.length === 0" class="px-5 py-8 text-center text-xs text-slate-400 italic">
               {{ t('server_logs.no_transactions') }}
             </div>
@@ -610,6 +579,54 @@ const filteredRejects = computed(() => {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- Таблица NOQUEUE отказов -->
+        <div class="glass-panel border border-slate-200 dark:border-slate-800 overflow-hidden">
+          <div @click="showRejectsBlock = !showRejectsBlock" class="cursor-pointer px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex flex-wrap items-center gap-6 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors">
+            <div class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-slate-400 transition-transform duration-300" :class="{ '-rotate-90': !showRejectsBlock }" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" /></svg>
+              <h3 class="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">{{ t('server_logs.table_rejects') }}</h3>
+            </div>
+            <div class="relative" @click.stop>
+              <svg class="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+              <input 
+                type="text" 
+                v-model="rejectSearch" 
+                :placeholder="t('common.search')" 
+                class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-700 dark:text-slate-300 outline-none focus:border-mail-blue-500 w-72 transition-colors"
+              >
+            </div>
+          </div>
+          <div v-show="showRejectsBlock" class="overflow-x-auto max-h-[500px] overflow-y-auto scrollbar-panel">
+            <table class="w-full text-left border-collapse relative">
+              <thead class="sticky top-0 z-10">
+                <tr class="border-b border-slate-200 dark:border-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-400 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-sm">
+                  <th class="px-5 py-3">{{ t('server_logs.col_time') }}</th>
+                  <th class="px-5 py-3">{{ t('server_logs.col_client') }}</th>
+                  <th class="px-5 py-3">{{ t('server_logs.col_from') }}</th>
+                  <th class="px-5 py-3">{{ t('server_logs.col_to') }}</th>
+                  <th class="px-5 py-3">{{ t('server_logs.col_reason') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="filteredRejects.length === 0">
+                  <td colspan="5" class="px-5 py-6 text-center text-xs text-slate-400 italic">{{ t('common.none') }}</td>
+                </tr>
+                <tr 
+                  v-for="(rej, idx) in filteredRejects" 
+                  :key="idx" 
+                  class="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-slate-900/10 transition-colors text-xs"
+                >
+                  <td class="px-5 py-3.5 font-mono text-slate-400 whitespace-nowrap">{{ rej.timestamp }}</td>
+                  <td class="px-5 py-3.5 font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">{{ rej.client }}</td>
+                  <td class="px-5 py-3.5 font-semibold text-slate-600 dark:text-slate-400 truncate max-w-[150px]">{{ rej.from }}</td>
+                  <td class="px-5 py-3.5 font-semibold text-slate-600 dark:text-slate-400 truncate max-w-[150px]">{{ rej.to }}</td>
+                  <td class="px-5 py-3.5 text-red-500 font-medium font-mono select-all">{{ rej.reason }}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
