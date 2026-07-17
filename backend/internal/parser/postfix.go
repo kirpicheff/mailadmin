@@ -255,15 +255,16 @@ func ParsePostfixLogs(lines []string) *AnalysisResult {
 			if del.To != "" {
 				recipientsMap[del.To]++
 			}
-			if del.Delay != "" {
-				if d, err := strconv.ParseFloat(del.Delay, 64); err == nil {
-					totalDelay += d
-					delayCount++
-				}
-			}
+			
 			switch del.Status {
 			case "sent":
 				result.SentCount++
+				if del.Delay != "" {
+					if d, err := strconv.ParseFloat(del.Delay, 64); err == nil {
+						totalDelay += d
+						delayCount++
+					}
+				}
 			case "deferred":
 				result.DeferredCount++
 				errorsMap[del.DSN]++
