@@ -584,5 +584,25 @@
     "relay": "Recipient Server (Relay)",
     "dsn": "Response Code (DSN)",
     "remote_response": "Server Response"
+  },
+  "dsn": {
+    "unknown": "Unknown error",
+    "c_2_0_0": "Delivery successful",
+    "c_4_1_1": "Recipient address not found",
+    "c_4_2_1": "Mailbox unavailable",
+    "c_4_3_1": "Insufficient storage",
+    "c_4_4_1": "No answer from host",
+    "c_4_4_2": "Connection dropped",
+    "c_4_4_7": "Delivery timeout",
+    "c_4_7_1": "Access denied",
+    "c_5_1_1": "Mailbox does not exist",
+    "c_5_1_2": "Domain does not exist",
+    "c_5_2_1": "Mailbox disabled",
+    "c_5_2_2": "Mailbox full",
+    "c_5_3_0": "Mail system problem",
+    "c_5_4_1": "Rejected by policy",
+    "c_5_5_0": "SMTP protocol error",
+    "c_5_7_1": "Rejected by anti-spam",
+    "c_5_7_26": "SPF/DKIM/DMARC error"
   }
 }

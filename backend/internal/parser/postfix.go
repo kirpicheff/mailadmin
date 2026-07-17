@@ -87,7 +87,7 @@ var (
 	rejectRegex = regexp.MustCompile(`(?:reject|milter-reject):\s+.*?from\s+([^:]+):\s+(.*?);\s+from=<?([^>\s]*)>?\s+to=<?([^>\s]*)>?`)
 
 	// Разбор SASL Authentication failed
-	saslFailRegex = regexp.MustCompile(`warning:.*?(?:unknown)?\[([0-9a-fA-F\.:]+)\].*?SASL [A-Z0-9]+ authentication failed`)
+	saslFailRegex = regexp.MustCompile(`\[([0-9a-fA-F\.:]+)\].*?SASL [A-Z0-9]+ authentication failed`)
 
 	// Разбор установления TLS
 	tlsRegex = regexp.MustCompile(`(?:Anonymous|Trusted) TLS connection established`)

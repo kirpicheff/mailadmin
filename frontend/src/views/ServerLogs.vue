@@ -3,7 +3,7 @@ import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import api from '@/api/axios'
 
-const { t } = useI18n()
+const { t, te } = useI18n()
 const loading = ref(true)
 const activeTab = ref('raw') // 'raw' или 'analysis'
 const logs = ref([])
@@ -33,6 +33,12 @@ const quickFilters = [
   { label: 'Sent', value: 'status=sent', color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' },
   { label: 'Auth', value: 'sasl', color: 'bg-purple-500/10 text-purple-500 border-purple-500/20' }
 ]
+
+const getDsnTitle = (code) => {
+  if (!code) return t('dsn.unknown')
+  const key = `dsn.c_${code.replace(/\./g, '_')}`
+  return te(key) ? t(key) : t('dsn.unknown')
+}
 
 const fetchLogs = async () => {
   if (activeTab.value === 'raw') {
@@ -158,7 +164,9 @@ const txSearch = ref('')
 const filteredTransactions = computed(() => {
   let list = analysisData.value.transactions
   if (!showSpam.value) {
-    list = list.filter(tx => tx.from && tx.from !== 'unknown' && tx.size > 0)
+    // tx.size > 0 guarantees it's a real email that reached qmgr,
+    // even if tx.from is empty (Null Sender for bounces/notifications).
+    list = list.filter(tx => tx.size > 0)
   }
   
   const q = txSearch.value.toLowerCase().trim()
@@ -288,7 +296,7 @@ const filteredRejects = computed(() => {
       <!-- Terminal window -->
       <div 
         ref="logContainer"
-        class="flex-1 bg-slate-950 font-mono text-[11px] md:text-[13px] leading-relaxed overflow-auto scrollbar-thin scrollbar-thumb-slate-800 p-2"
+        class="flex-1 bg-slate-950 font-mono text-[11px] md:text-[13px] leading-relaxed overflow-auto scrollbar-terminal p-2"
       >
         <div v-if="loading && logs.length === 0" class="flex items-center justify-center h-full">
            <div class="flex flex-col items-center gap-4">
@@ -395,7 +403,10 @@ const filteredRejects = computed(() => {
             <div v-if="!analysisData.top_errors || analysisData.top_errors.length === 0" class="text-xs text-slate-400 italic">{{ t('common.none') }}</div>
             <ul v-else class="space-y-3">
               <li v-for="item in analysisData.top_errors" :key="item.key" class="flex justify-between items-center text-xs">
-                <span class="font-mono font-semibold text-slate-600 dark:text-slate-300">{{ item.key }}</span>
+                <div class="flex flex-col">
+                  <span class="font-mono font-semibold text-slate-600 dark:text-slate-300">{{ item.key }}</span>
+                  <span class="text-[9px] text-slate-400 max-w-[150px] truncate" :title="getDsnTitle(item.key)">{{ getDsnTitle(item.key) }}</span>
+                </div>
                 <span class="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded font-black text-slate-700 dark:text-slate-400">{{ item.value }}</span>
               </li>
             </ul>
@@ -428,7 +439,7 @@ const filteredRejects = computed(() => {
               >
             </div>
           </div>
-          <div class="overflow-x-auto max-h-[500px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
+          <div class="overflow-x-auto max-h-[500px] overflow-y-auto scrollbar-panel">
             <table class="w-full text-left border-collapse relative">
               <thead class="sticky top-0 z-10">
                 <tr class="border-b border-slate-200 dark:border-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-400 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-sm">
@@ -480,7 +491,7 @@ const filteredRejects = computed(() => {
               </label>
             </div>
           </div>
-          <div class="divide-y divide-slate-100 dark:divide-slate-800 max-h-[800px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
+          <div class="divide-y divide-slate-100 dark:divide-slate-800 max-h-[800px] overflow-y-auto scrollbar-panel">
             <div v-if="filteredTransactions.length === 0" class="px-5 py-8 text-center text-xs text-slate-400 italic">
               {{ t('server_logs.no_transactions') }}
             </div>
@@ -488,14 +499,14 @@ const filteredRejects = computed(() => {
               v-for="tx in filteredTransactions" 
               :key="tx.queue_id"
               class="p-4 hover:bg-slate-50/30 dark:hover:bg-slate-900/10 transition-colors"
-              :class="{'opacity-60 grayscale': !tx.from || tx.from === 'unknown' || tx.size === 0}"
+              :class="{'opacity-60 grayscale': tx.size === 0}"
             >
               <div @click="toggleTx(tx.queue_id)" class="flex flex-wrap items-center justify-between gap-4 cursor-pointer">
                 <div class="flex items-center gap-3">
                   <span class="font-mono text-xs font-black bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">{{ tx.queue_id }}</span>
                   <div class="flex flex-col">
                     <span class="text-xs font-bold text-slate-700 dark:text-slate-300">
-                      {{ tx.from || 'unknown' }} &rarr; 
+                      {{ tx.from || '[System / DSN]' }} &rarr; 
                       <span class="text-slate-500 font-medium">
                         {{ (tx.deliveries || []).length > 0 ? tx.deliveries.map(d => d.to).join(', ') : '?' }}
                       </span>
@@ -581,6 +592,7 @@ const filteredRejects = computed(() => {
                       </div>
                       <div>
                         <span class="font-semibold">{{ t('server_logs.dsn') }}:</span> <span class="font-mono font-bold">{{ del.dsn }}</span>
+                        <span class="ml-1 text-[9px] text-slate-400" v-if="del.dsn && del.dsn !== '2.0.0'">({{ getDsnTitle(del.dsn) }})</span>
                       </div>
                     </div>
                     <div class="mt-1">
@@ -606,20 +618,36 @@ code {
   font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
 }
 /* Кастомный скроллбар для терминала */
-.scrollbar-thin::-webkit-scrollbar {
+.scrollbar-terminal::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
-.scrollbar-thin::-webkit-scrollbar-track {
+.scrollbar-terminal::-webkit-scrollbar-track {
   background-color: #020617; /* slate-950 */
 }
-.scrollbar-thin::-webkit-scrollbar-thumb {
+.scrollbar-terminal::-webkit-scrollbar-thumb {
   background-color: #1e293b; /* bg-slate-800 */
   border-radius: 9999px;
   border: 2px solid #020617;
 }
-.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+.scrollbar-terminal::-webkit-scrollbar-thumb:hover {
   background-color: #334155; /* bg-slate-700 */
+}
+
+/* Кастомный скроллбар для панелей (светлая/темная тема) */
+.scrollbar-panel::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scrollbar-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-panel::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.3); /* slate-400 */
+  border-radius: 9999px;
+}
+.scrollbar-panel::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(148, 163, 184, 0.5);
 }
 
 mark {
