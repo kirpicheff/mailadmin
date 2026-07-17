@@ -567,7 +567,14 @@ const filteredRejects = computed(() => {
                   >
                     <div class="flex justify-between items-center">
                       <div class="flex items-center">
-                        <span class="font-bold text-slate-700 dark:text-slate-300">{{ del.to }}</span>
+                        <div class="flex flex-col">
+                          <span class="font-bold text-slate-700 dark:text-slate-300">
+                            {{ del.to }}
+                            <span v-if="del.folder" class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-400" title="Папка назначения (Sieve)">
+                              &#128193; {{ del.folder }}
+                            </span>
+                          </span>
+                        </div>
                         <svg v-if="del.is_tls" title="TLS Encrypted" class="w-3.5 h-3.5 inline-block ml-1.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                         </svg>

@@ -17,6 +17,7 @@ type DeliveryAttempt struct {
 	Delay     string `json:"delay"`
 	Delays    string `json:"delays"`
 	IsTLS     bool   `json:"is_tls"`
+	Folder    string `json:"folder"`
 }
 
 // Transaction представляет жизненный цикл одного письма по его QueueID
@@ -91,6 +92,9 @@ var (
 
 	// Разбор установления TLS
 	tlsRegex = regexp.MustCompile(`(?:Anonymous|Trusted) TLS connection established`)
+
+	// Разбор логов Dovecot Sieve (сохранение в папку)
+	dovecotRegex = regexp.MustCompile(`dovecot: lmtp\(([^)]+)\).*?sieve: msgid=(?:<([^>]+)>|([^:]*)):.*?stored mail into mailbox '([^']+)'`)
 )
 
 // ParsePostfixLogs анализирует срез строк лога Postfix
@@ -99,6 +103,7 @@ func ParsePostfixLogs(lines []string) *AnalysisResult {
 	var rejects []RejectInfo
 	saslFailuresMap := make(map[string]int)
 	tlsSessions := make(map[string]bool)
+	dovecotMailboxes := make(map[string]string) // key: messageID + "|" + recipient
 
 	// Вспомогательная мапа для хранения информации о клиенте по PID процесса smtpd
 	clientSessions := make(map[string]struct{ Host, IP string })
@@ -106,6 +111,21 @@ func ParsePostfixLogs(lines []string) *AnalysisResult {
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" {
+			continue
+		}
+
+		if strings.Contains(line, "dovecot:") && strings.Contains(line, "sieve:") {
+			if dMatches := dovecotRegex.FindStringSubmatch(line); len(dMatches) >= 5 {
+				rcpt := dMatches[1]
+				msgID := dMatches[2]
+				if msgID == "" {
+					msgID = dMatches[3]
+				}
+				folder := dMatches[4]
+				if msgID != "" {
+					dovecotMailboxes[msgID+"|"+rcpt] = folder
+				}
+			}
 			continue
 		}
 
@@ -238,6 +258,15 @@ func ParsePostfixLogs(lines []string) *AnalysisResult {
 	var delayCount int
 
 	for _, tx := range transactionsMap {
+		for i, del := range tx.Deliveries {
+			if tx.MessageID != "" && del.To != "" {
+				key := tx.MessageID + "|" + del.To
+				if folder, ok := dovecotMailboxes[key]; ok {
+					tx.Deliveries[i].Folder = folder
+				}
+			}
+		}
+
 		// Добавляем транзакцию в общий список
 		result.Transactions = append(result.Transactions, *tx)
 		result.TotalTransactions++
