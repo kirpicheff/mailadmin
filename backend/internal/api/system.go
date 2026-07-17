@@ -556,7 +556,7 @@ func getSystemStats() SystemStats {
 		if strings.Contains(lastLine, "Mail queue is empty") {
 			s.MailQueue = 0
 		} else {
-			re := regexp.MustCompile(`(\d+) Requests.`)
+			re := regexp.MustCompile(`(\d+) Request[s]?\.`)
 			match := re.FindStringSubmatch(lastLine)
 			if len(match) > 1 {
 				s.MailQueue, _ = strconv.Atoi(match[1])
