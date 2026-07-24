@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import api from '@/api/axios'
 import { useI18n } from 'vue-i18n'
 
@@ -17,9 +17,23 @@ const stats = ref({
 const health = ref(null)
 const loading = ref(true)
 const bannedIPs = ref([])
+const searchIP = ref('')
 const showF2BModal = ref(false)
 const processingUnban = ref(null)
 let timer = null
+
+// Фильтрация списка заблокированных IP по введенному запросу с проверкой на null
+const filteredBannedIPs = computed(() => {
+  if (!bannedIPs.value || !Array.isArray(bannedIPs.value)) return []
+  if (!searchIP.value || !searchIP.value.trim()) return bannedIPs.value
+  const query = searchIP.value.trim().toLowerCase()
+  return bannedIPs.value.filter(item => {
+    if (!item) return false
+    const ip = (item.ip || '').toLowerCase()
+    const jail = (item.jail || '').toLowerCase()
+    return ip.includes(query) || jail.includes(query)
+  })
+})
 
 const formatBytes = (bytes) => {
   if (!bytes || bytes === 0) return '0 Bytes'
@@ -347,8 +361,23 @@ onUnmounted(() => {
           </button>
         </div>
 
+        <!-- Поиск по заблокированным IP (отображается если есть заблокированные IP) -->
+        <div v-if="bannedIPs?.length > 0" class="px-8 py-4 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <div class="relative">
+            <input 
+              v-model="searchIP" 
+              type="text" 
+              :placeholder="t('fail2ban.search_placeholder')" 
+              class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 rounded-xl text-xs font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-mail-blue-500/50 transition-all"
+            />
+            <svg class="w-4 h-4 text-slate-400 absolute left-3.5 top-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+        </div>
+
         <div class="p-0 max-h-[60vh] overflow-y-auto">
-          <table v-if="bannedIPs?.length > 0" class="w-full text-left">
+          <table v-if="filteredBannedIPs?.length > 0" class="w-full text-left">
             <thead class="sticky top-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md z-10 border-b border-slate-100 dark:border-slate-800">
               <tr>
                 <th class="px-8 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">{{ t('fail2ban.ip_address') }}</th>
@@ -357,7 +386,7 @@ onUnmounted(() => {
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-              <tr v-for="item in bannedIPs" :key="item.ip + item.jail" class="group transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+              <tr v-for="item in filteredBannedIPs" :key="item.ip + item.jail" class="group transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
                 <td class="px-8 py-5 text-sm font-black text-slate-900 dark:text-white tracking-tight">{{ item.ip }}</td>
                 <td class="px-8 py-5">
                   <span class="px-2 py-1 bg-amber-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-black uppercase rounded-lg border border-amber-200 dark:border-amber-500/20">
@@ -377,10 +406,15 @@ onUnmounted(() => {
             </tbody>
           </table>
           <div v-else class="py-24 text-center">
-            <div class="w-20 h-20 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-500 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-emerald-500/10 rotate-3 group-hover:rotate-0 transition-transform">
-              <svg class="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04M12 21.056c1.54 0 3.024-.317 4.382-.886L12.038 12 7.634 20.17A11.947 11.947 0 0112 21.056z" /></svg>
+            <div v-if="bannedIPs?.length > 0" class="text-slate-400 italic font-medium text-sm">
+              {{ t('common.empty') }}
             </div>
-            <p class="text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase">{{ t('fail2ban.safe_status') }}</p>
+            <div v-else>
+              <div class="w-20 h-20 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-500 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-emerald-500/10 rotate-3 group-hover:rotate-0 transition-transform">
+                <svg class="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04M12 21.056c1.54 0 3.024-.317 4.382-.886L12.038 12 7.634 20.17A11.947 11.947 0 0112 21.056z" /></svg>
+              </div>
+              <p class="text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase">{{ t('fail2ban.safe_status') }}</p>
+            </div>
           </div>
         </div>
 

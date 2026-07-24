@@ -543,6 +543,7 @@
     "confirm_unban": "Unban IP {ip} in jail {jail}?",
     "empty": "No banned IPs found",
     "safe_status": "Server is safe, no active threats found",
+    "search_placeholder": "Search by IP or jail...",
     "messages": {
       "unban_success": "IP successfully unbanned",
       "unban_error": "Failed to unban IP"
