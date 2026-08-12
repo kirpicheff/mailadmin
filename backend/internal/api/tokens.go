@@ -38,7 +38,7 @@ func init() {
 
 // RegisterTokenHandlers регистрирует маршруты для управления API токенами
 func RegisterTokenHandlers(g *echo.Group, secret string) {
-	tokensGroup := g.Group("/api-tokens")
+	tokensGroup := g.Group("/system/api-tokens")
 	tokensGroup.Use(auth.JWTMiddleware(secret))
 	tokensGroup.Use(auth.SuperAdminMiddleware)
 
