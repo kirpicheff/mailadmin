@@ -8,9 +8,11 @@ import (
 )
 
 type Claims struct {
-	Username           string `json:"username"`
-	SuperAdmin         bool   `json:"superadmin"`
-	MustChangePassword bool   `json:"must_change_password"`
+	Username           string   `json:"username"`
+	SuperAdmin         bool     `json:"superadmin"`
+	MustChangePassword bool     `json:"must_change_password"`
+	IsAPIToken         bool     `json:"is_api_token"`
+	APIScopes          []string `json:"api_scopes"`
 	jwt.RegisteredClaims
 }
 

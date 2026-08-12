@@ -523,4 +523,61 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 		audit.Log(db.DB, claims.Username, "multiple", "batch status update", fmt.Sprintf("%d items to %v", len(req.Usernames), req.Active))
 		return c.NoContent(http.StatusNoContent)
 	})
+
+	// Специальный эндпоинт для смены пароля (для API токенов и плагинов)
+	mailboxes.PATCH("/:username/password", func(c echo.Context) error {
+		username := c.Param("username")
+		type PasswordRequest struct {
+			Password string `json:"password" validate:"required,min=8"`
+		}
+
+		var req PasswordRequest
+		if err := c.Bind(&req); err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
+		}
+
+		claims := c.Get("user").(*auth.Claims)
+		
+		// Проверяем права: либо это суперадмин, либо это токен с нужным scope
+		hasAccess := claims.SuperAdmin
+		if claims.IsAPIToken {
+			hasAccess = false
+			for _, scope := range claims.APIScopes {
+				if scope == "mailbox:password" || scope == "all" {
+					hasAccess = true
+					break
+				}
+			}
+		} else if !claims.SuperAdmin {
+			// Для доменных админов проверяем доступ к домену ящика
+			var box models.Mailbox
+			if err := db.DB.Select("domain").Where("username = ?", username).First(&box).Error; err == nil {
+				hasAccess = hasDomainAccess(claims, box.Domain)
+			}
+		}
+
+		if !hasAccess {
+			return c.JSON(http.StatusForbidden, map[string]string{"error": "access denied"})
+		}
+
+		var existing models.Mailbox
+		if err := db.DB.Where("username = ?", username).First(&existing).Error; err != nil {
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "mailbox not found"})
+		}
+
+		hash, err := auth.GenerateHash(req.Password)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to hash password"})
+		}
+
+		if err := db.DB.Model(&existing).Updates(map[string]interface{}{
+			"password":        hash,
+			"password_expiry": time.Now().AddDate(-1, 0, 0),
+		}).Error; err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to update password"})
+		}
+
+		audit.Log(db.DB, claims.Username, existing.Domain, "change mailbox password via patch", username)
+		return c.JSON(http.StatusOK, map[string]string{"message": "password updated"})
+	})
 }

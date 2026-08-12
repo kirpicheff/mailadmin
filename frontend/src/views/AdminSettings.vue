@@ -13,6 +13,9 @@
       <button @click="activeTab = 'notifications'; fetchNotificationRules()" :class="activeTab === 'notifications' ? 'border-mail-blue-500 text-mail-blue-600 dark:text-mail-blue-400 font-bold border-b-2' : 'text-slate-500 dark:text-slate-400'" class="px-6 py-3 text-sm focus:outline-none transition-all">
         {{ t('notifications.tab_title') }}
       </button>
+      <button @click="activeTab = 'api_tokens'; fetchAPITokens()" :class="activeTab === 'api_tokens' ? 'border-mail-blue-500 text-mail-blue-600 dark:text-mail-blue-400 font-bold border-b-2' : 'text-slate-500 dark:text-slate-400'" class="px-6 py-3 text-sm focus:outline-none transition-all">
+        API Токены
+      </button>
     </div>
 
     <!-- Вкладка администраторов -->
@@ -161,6 +164,63 @@
       </div>
     </div>
 
+    <!-- Вкладка API Токенов -->
+    <div v-else-if="activeTab === 'api_tokens'" class="space-y-6">
+      <div class="flex justify-between items-center">
+        <div>
+          <h2 class="text-xl font-bold text-slate-900 dark:text-white">API Токены</h2>
+          <p class="text-xs text-slate-500 mt-1">Управление токенами доступа для плагинов и внешних систем</p>
+        </div>
+        <button @click="openCreateTokenModal" class="px-4 py-2 bg-mail-blue-600 hover:bg-mail-blue-700 text-white rounded-lg transition-colors">
+          Создать токен
+        </button>
+      </div>
+
+      <div class="glass-panel overflow-hidden">
+        <table class="w-full text-left">
+          <thead class="bg-slate-50 dark:bg-slate-800/50">
+            <tr>
+              <th class="px-6 py-3 text-xs font-medium text-slate-500 uppercase">Описание</th>
+              <th class="px-6 py-3 text-xs font-medium text-slate-500 uppercase">Токен</th>
+              <th class="px-6 py-3 text-xs font-medium text-slate-500 uppercase">Права (Scope)</th>
+              <th class="px-6 py-3 text-xs font-medium text-slate-500 uppercase">Создан</th>
+              <th class="px-6 py-3 text-xs font-medium text-slate-500 uppercase">Действия</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200 dark:divide-slate-700/50">
+            <tr v-for="token in apiTokens" :key="token.id" class="group hover:bg-slate-50/80 dark:hover:bg-mail-blue-500/5 transition-all duration-200">
+              <td class="px-6 py-4">
+                <div class="text-sm font-bold text-slate-900 dark:text-white">{{ token.description }}</div>
+              </td>
+              <td class="px-6 py-4">
+                <code class="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-xs font-mono text-mail-blue-600 dark:text-mail-blue-400">
+                  {{ token.token }}
+                </code>
+              </td>
+              <td class="px-6 py-4">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                  {{ token.scope }}
+                </span>
+              </td>
+              <td class="px-6 py-4 text-xs text-slate-500">
+                {{ new Date(token.created_at).toLocaleString() }}
+              </td>
+              <td class="px-6 py-4">
+                <button @click="deleteAPIToken(token.id)" class="p-2 bg-slate-100 hover:bg-red-100 text-slate-600 hover:text-red-600 dark:bg-slate-800/50 dark:hover:bg-red-900/40 dark:text-slate-400 dark:hover:text-red-300 rounded-xl transition-all duration-200" title="Удалить">
+                  <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" /></svg>
+                </button>
+              </td>
+            </tr>
+            <tr v-if="apiTokens.length === 0">
+              <td colspan="5" class="px-6 py-8 text-center text-slate-500 text-sm">
+                Нет созданных токенов
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- Модальное окно создания/редактирования администратора -->
     <div v-if="showModal" class="fixed inset-0 bg-slate-950/40 backdrop-blur-md flex items-center justify-center p-4 z-50 transition-all duration-300">
       <div class="bg-white dark:bg-slate-900 p-8 rounded-3xl w-full max-w-lg shadow-[0_20px_50px_rgba(0,0,0,0.3)] space-y-6 border border-white/20 dark:border-slate-800/50">
@@ -288,6 +348,51 @@
         </form>
       </div>
     </div>
+
+    <!-- Модальное окно создания API токена -->
+    <div v-if="showTokenModal" class="fixed inset-0 bg-slate-950/40 backdrop-blur-md flex items-center justify-center p-4 z-50 transition-all duration-300">
+      <div class="bg-white dark:bg-slate-900 p-8 rounded-3xl w-full max-w-md shadow-[0_20px_50px_rgba(0,0,0,0.3)] space-y-6 border border-white/20 dark:border-slate-800/50">
+        <div class="flex justify-between items-center">
+          <h3 class="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+            Создать API Токен
+          </h3>
+          <button @click="showTokenModal = false" class="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+        
+        <div v-if="generatedToken" class="p-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-xl space-y-3">
+          <div class="text-sm font-bold text-green-800 dark:text-green-300">Токен успешно создан!</div>
+          <p class="text-xs text-green-700 dark:text-green-400">Скопируйте этот токен сейчас. Вы больше не сможете увидеть его целиком.</p>
+          <div class="relative">
+            <input type="text" readonly :value="generatedToken" class="w-full pl-3 pr-10 py-2 bg-white dark:bg-slate-950 border border-green-300 dark:border-green-700 rounded-lg text-sm font-mono text-slate-900 dark:text-white outline-none" />
+          </div>
+          <button @click="showTokenModal = false; generatedToken = ''" class="w-full mt-2 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold text-sm transition-colors">
+            Я скопировал токен
+          </button>
+        </div>
+        
+        <form v-else @submit.prevent="createAPIToken" class="space-y-5">
+          <div class="space-y-4">
+            <div class="relative">
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Описание (название плагина)</label>
+              <input v-model="tokenForm.description" type="text" required placeholder="Например, SnappyMail Plugin"
+                class="w-full px-4 py-3 rounded-2xl border-0 bg-slate-100 dark:bg-slate-800/50 dark:text-white focus:ring-2 focus:ring-mail-blue-500 transition-all" />
+            </div>
+            <div class="relative">
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Права (Scope)</label>
+              <select v-model="tokenForm.scope" required class="w-full px-4 py-3 rounded-2xl border-0 bg-slate-100 dark:bg-slate-800/50 dark:text-white focus:ring-2 focus:ring-mail-blue-500 transition-all appearance-none cursor-pointer">
+                <option value="mailbox:password">mailbox:password (Только смена пароля ящика)</option>
+                <option value="all">all (Полный доступ, как суперадмин)</option>
+              </select>
+            </div>
+          </div>
+          <button type="submit" class="w-full py-3.5 bg-mail-blue-600 hover:bg-mail-blue-700 text-white rounded-2xl font-bold transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-mail-blue-500/25">
+            Сгенерировать токен
+          </button>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -306,6 +411,9 @@ const isEdit = ref(false)
 const activeTab = ref('admins')
 const newRecipientEmail = ref('')
 const groupedRules = ref([])
+const apiTokens = ref([])
+const showTokenModal = ref(false)
+const generatedToken = ref('')
 
 const form = reactive({
   username: '',
@@ -316,6 +424,11 @@ const form = reactive({
   email_other: '',
   domains: [],
   receive_passwords: true
+})
+
+const tokenForm = reactive({
+  description: '',
+  scope: 'mailbox:password'
 })
 
 const fetchAdmins = async () => {
@@ -474,6 +587,42 @@ const toggleAdminStatus = async (admin) => {
     admin.active = newStatus
   } catch (err) {
     alert(t('admins.errors.status_change'))
+  }
+}
+
+const fetchAPITokens = async () => {
+  try {
+    const { data } = await api.get('/system/api-tokens')
+    apiTokens.value = data
+  } catch (err) {
+    console.error('Error fetching API tokens:', err)
+  }
+}
+
+const openCreateTokenModal = () => {
+  tokenForm.description = ''
+  tokenForm.scope = 'mailbox:password'
+  generatedToken.value = ''
+  showTokenModal.value = true
+}
+
+const createAPIToken = async () => {
+  try {
+    const { data } = await api.post('/system/api-tokens', tokenForm)
+    generatedToken.value = data.token
+    fetchAPITokens()
+  } catch (err) {
+    alert('Ошибка создания токена: ' + (err.response?.data?.error || err.message))
+  }
+}
+
+const deleteAPIToken = async (id) => {
+  if (!confirm('Вы уверены, что хотите удалить этот токен?')) return
+  try {
+    await api.delete(`/system/api-tokens/${id}`)
+    fetchAPITokens()
+  } catch (err) {
+    alert('Ошибка удаления токена: ' + (err.response?.data?.error || err.message))
   }
 }
 

@@ -95,6 +95,7 @@ func InitDB(dsn string) {
 		&models.Session{},
 		&models.NotificationRule{},
 		&models.Setting{},
+		&models.APIToken{},
 	)
 	if err != nil {
 		log.Fatalf("failed to migrate database: %v", err)

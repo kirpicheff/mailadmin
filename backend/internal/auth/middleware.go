@@ -7,6 +7,9 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+// APITokenValidator устанавливается извне (из пакета api), чтобы избежать циклической зависимости
+var APITokenValidator func(token string) (*Claims, error)
+
 // JWTMiddleware проверяет Access Token в заголовке Authorization
 func JWTMiddleware(secret string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -22,7 +25,16 @@ func JWTMiddleware(secret string) echo.MiddlewareFunc {
 			}
 
 			tokenString := parts[1]
-			claims, err := ValidateToken(tokenString, secret)
+			
+			var claims *Claims
+			var err error
+
+			if strings.HasPrefix(tokenString, "ma_tk_") && APITokenValidator != nil {
+				claims, err = APITokenValidator(tokenString)
+			} else {
+				claims, err = ValidateToken(tokenString, secret)
+			}
+
 			if err != nil {
 				return c.JSON(http.StatusUnauthorized, map[string]string{"error": "invalid or expired token"})
 			}

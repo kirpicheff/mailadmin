@@ -193,3 +193,16 @@ type Session struct {
 }
 
 func (Session) TableName() string { return "ma_sessions" }
+
+// APIToken представляет таблицу api_tokens
+type APIToken struct {
+	ID          uint       `gorm:"primaryKey;autoIncrement;column:id" json:"id"`
+	Token       string     `gorm:"column:token;size:255;uniqueIndex" json:"token"`
+	Description string     `gorm:"column:description;size:255" json:"description"`
+	Scope       string     `gorm:"column:scope;size:255" json:"scope"` // "mailbox:password" или "all"
+	CreatedAt   time.Time  `gorm:"column:created_at;autoCreateTime" json:"created_at"`
+	ExpiresAt   *time.Time `gorm:"column:expires_at" json:"expires_at"` // null означает, что бессрочный
+	Active      bool       `gorm:"column:active;not null;default:1" json:"active"`
+}
+
+func (APIToken) TableName() string { return "ma_api_tokens" }

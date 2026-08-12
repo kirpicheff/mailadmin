@@ -114,6 +114,7 @@ func main() {
 	api.RegisterStatsHandlers(apiGroup, cfg.JWTSecret)
 	api.RegisterSystemHandlers(apiGroup, cfg.JWTSecret)
 	api.RegisterNotificationHandlers(apiGroup, cfg.JWTSecret)
+	api.RegisterTokenHandlers(apiGroup, cfg.JWTSecret)
 
 	// Инструменты и Автоответчик
 	api.RegisterToolsHandlers(apiGroup, cfg.JWTSecret)
