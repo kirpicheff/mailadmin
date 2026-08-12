@@ -364,10 +364,13 @@
         <div v-if="generatedToken" class="p-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-xl space-y-3">
           <div class="text-sm font-bold text-green-800 dark:text-green-300">Токен успешно создан!</div>
           <p class="text-xs text-green-700 dark:text-green-400">Скопируйте этот токен сейчас. Вы больше не сможете увидеть его целиком.</p>
-          <div class="relative">
-            <input type="text" readonly :value="generatedToken" class="w-full pl-3 pr-10 py-2 bg-white dark:bg-slate-950 border border-green-300 dark:border-green-700 rounded-lg text-sm font-mono text-slate-900 dark:text-white outline-none" />
+          <div class="relative flex gap-2">
+            <input type="text" readonly :value="generatedToken" class="w-full pl-3 pr-3 py-2 bg-white dark:bg-slate-950 border border-green-300 dark:border-green-700 rounded-lg text-sm font-mono text-slate-900 dark:text-white outline-none" />
+            <button @click="copyToken(generatedToken)" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold text-sm transition-colors flex-shrink-0 flex items-center gap-2" title="Скопировать">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+            </button>
           </div>
-          <button @click="showTokenModal = false; generatedToken = ''" class="w-full mt-2 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold text-sm transition-colors">
+          <button @click="showTokenModal = false; generatedToken = ''" class="w-full mt-2 py-2 bg-green-100 hover:bg-green-200 text-green-700 dark:bg-green-900/50 dark:hover:bg-green-800/50 dark:text-green-300 rounded-xl font-bold text-sm transition-colors">
             Я скопировал токен
           </button>
         </div>
@@ -604,6 +607,15 @@ const openCreateTokenModal = () => {
   tokenForm.scope = 'mailbox:password'
   generatedToken.value = ''
   showTokenModal.value = true
+}
+
+const copyToken = async (text) => {
+  try {
+    await navigator.clipboard.writeText(text)
+    alert('Токен скопирован в буфер обмена!')
+  } catch (err) {
+    alert('Не удалось скопировать токен: ' + err)
+  }
 }
 
 const createAPIToken = async () => {
