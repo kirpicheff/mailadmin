@@ -210,9 +210,10 @@ func Start() {
 					return
 				}
 			} else {
-				currentVal := key.Value()
-				if !strings.Contains(currentVal, parsedIP.String()) {
-					key.SetValue(strings.TrimSpace(currentVal) + " " + parsedIP.String())
+				val := strings.ReplaceAll(key.Value(), "\"", "")
+				val = strings.ReplaceAll(val, "'", "")
+				if !strings.Contains(val, parsedIP.String()) {
+					key.SetValue(strings.TrimSpace(val) + " " + parsedIP.String())
 				}
 			}
 
@@ -243,7 +244,9 @@ func Start() {
 			var ips []string
 			section := cfg.Section("DEFAULT")
 			if key, err := section.GetKey("ignoreip"); err == nil {
-				for _, ip := range strings.Fields(key.Value()) {
+				val := strings.ReplaceAll(key.Value(), "\"", "")
+				val = strings.ReplaceAll(val, "'", "")
+				for _, ip := range strings.Fields(val) {
 					if ip != "" {
 						ips = append(ips, ip)
 					}
@@ -272,9 +275,10 @@ func Start() {
 
 			section := cfg.Section("DEFAULT")
 			if key, err := section.GetKey("ignoreip"); err == nil {
-				currentVal := key.Value()
+				val := strings.ReplaceAll(key.Value(), "\"", "")
+				val = strings.ReplaceAll(val, "'", "")
 				var newIPs []string
-				for _, ip := range strings.Fields(currentVal) {
+				for _, ip := range strings.Fields(val) {
 					if ip != p.IP {
 						newIPs = append(newIPs, ip)
 					}
@@ -425,6 +429,9 @@ func loadJailLocal() (string, *ini.File, error) {
 			var rescuedIPs string
 			if key, errGet := emptySection.GetKey("ignoreip"); errGet == nil {
 				rescuedIPs = key.Value()
+				rescuedIPs = strings.ReplaceAll(rescuedIPs, "\"", "")
+				rescuedIPs = strings.ReplaceAll(rescuedIPs, "'", "")
+				rescuedIPs = strings.TrimSpace(rescuedIPs)
 			}
 			
 			// Пересоздаем правильный конфиг
