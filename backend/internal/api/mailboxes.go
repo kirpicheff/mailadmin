@@ -537,7 +537,7 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 		}
 
 		claims := c.Get("user").(*auth.Claims)
-		
+
 		// Проверяем права: либо это суперадмин, либо это токен с нужным scope
 		hasAccess := claims.SuperAdmin
 		if claims.IsAPIToken {

@@ -1,9 +1,9 @@
 package audit
 
 import (
-	"time"
 	"github.com/user/mailadmin/internal/models"
 	"gorm.io/gorm"
+	"time"
 )
 
 // Log записывает действие в таблицу логов

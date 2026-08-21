@@ -9,11 +9,11 @@ import (
 )
 
 type Config struct {
-	DBDSN       string
-	JWTSecret   string
-	ListenAddr  string
-	CORSOrigins []string
-	MailRoot    string
+	DBDSN            string
+	JWTSecret        string
+	ListenAddr       string
+	CORSOrigins      []string
+	MailRoot         string
 	SieveRoot        string
 	LogPath          string
 	DovecotConfigDir string
@@ -91,16 +91,13 @@ func LoadConfig() *Config {
 	}
 
 	return &Config{
-		DBDSN:       dsn,
-		JWTSecret:   secret,
-		ListenAddr:  addr,
-		CORSOrigins: origins,
-		MailRoot:    mailRoot,
+		DBDSN:            dsn,
+		JWTSecret:        secret,
+		ListenAddr:       addr,
+		CORSOrigins:      origins,
+		MailRoot:         mailRoot,
 		SieveRoot:        sieveRoot,
 		LogPath:          logPath,
 		DovecotConfigDir: dovecotConfigDir,
 	}
 }
-
-
-

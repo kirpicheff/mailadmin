@@ -13,14 +13,14 @@ import (
 )
 
 type DiagnosticResult struct {
-	Domain      string          `json:"domain"`
-	MX          []string        `json:"mx"`
-	SPF         SPFResult       `json:"spf"`
-	DMARC       DMARCResult     `json:"dmarc"`
-	DKIM        []DKIMResult    `json:"dkim"`
-	SSL         []SSLResult     `json:"ssl"`
-	RBL         []RBLResult     `json:"rbl"`
-	OverallStatus string        `json:"overall_status"`
+	Domain        string       `json:"domain"`
+	MX            []string     `json:"mx"`
+	SPF           SPFResult    `json:"spf"`
+	DMARC         DMARCResult  `json:"dmarc"`
+	DKIM          []DKIMResult `json:"dkim"`
+	SSL           []SSLResult  `json:"ssl"`
+	RBL           []RBLResult  `json:"rbl"`
+	OverallStatus string       `json:"overall_status"`
 }
 
 type SPFResult struct {
@@ -42,13 +42,13 @@ type DKIMResult struct {
 }
 
 type SSLResult struct {
-	Host       string    `json:"host"`
-	Port       int       `json:"port"`
-	Valid      bool      `json:"valid"`
-	Expires    time.Time `json:"expires"`
-	DaysLeft   int       `json:"days_left"`
-	Issuer     string    `json:"issuer"`
-	Error      string    `json:"error,omitempty"`
+	Host     string    `json:"host"`
+	Port     int       `json:"port"`
+	Valid    bool      `json:"valid"`
+	Expires  time.Time `json:"expires"`
+	DaysLeft int       `json:"days_left"`
+	Issuer   string    `json:"issuer"`
+	Error    string    `json:"error,omitempty"`
 }
 
 type RBLResult struct {
@@ -160,7 +160,7 @@ func checkSSL(host string, port int) SSLResult {
 
 	cert := conn.ConnectionState().PeerCertificates[0]
 	daysLeft := int(time.Until(cert.NotAfter).Hours() / 24)
-	
+
 	return SSLResult{
 		Host:     host,
 		Port:     port,

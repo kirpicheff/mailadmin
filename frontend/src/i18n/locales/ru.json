@@ -542,17 +542,20 @@
   },
   "fail2ban": {
     "title": "Управление Fail2Ban",
-    "banned_ips": "Заблокированные IP",
-    "jail": "Тюрьма",
-    "ip_address": "IP адрес",
+    "banned_ips": "Заблокированные IP адреса",
+    "ip_address": "IP Адрес",
+    "jail": "Тюрьма (Jail)",
     "unban": "Разбанить",
-    "confirm_unban": "Разблокировать адрес {ip} в тюрьме {jail}?",
+    "whitelist": "В исключения",
+    "confirm_unban": "Вы уверены, что хотите разблокировать IP {ip} в тюрьме {jail}?",
+    "confirm_whitelist": "Вы уверены, что хотите добавить {ip} в бессрочные исключения (Whitelist)?",
     "empty": "Заблокированных адресов нет",
     "safe_status": "Сервер в безопасности, активных угроз не обнаружено",
     "search_placeholder": "Поиск по IP или тюрьме...",
     "messages": {
       "unban_success": "IP разблокирован",
-      "unban_error": "Ошибка при разблокировке"
+      "unban_error": "Ошибка при разблокировке",
+      "whitelist_error": "Ошибка при добавлении в исключения"
     }
   },
   "server_logs": {

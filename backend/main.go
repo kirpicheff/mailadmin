@@ -11,6 +11,7 @@ import (
 	"github.com/user/mailadmin/internal/api"
 	"github.com/user/mailadmin/internal/config"
 	"github.com/user/mailadmin/internal/db"
+	"github.com/user/mailadmin/internal/geoip"
 	"golang.org/x/time/rate"
 )
 
@@ -27,12 +28,15 @@ func main() {
 	}
 
 	// По умолчанию или если указан --web запускаем веб-интерфейс
-	
+
 	// Загружаем конфиг
 	cfg := config.LoadConfig()
 
 	// Инициализируем БД
 	db.InitDB(cfg.DBDSN)
+
+	// Инициализируем GeoIP базу (Lazy loading)
+	geoip.InitGeoIP("data")
 
 	e := echo.New()
 
@@ -131,5 +135,3 @@ func main() {
 	// Запуск сервера
 	e.Logger.Fatal(e.Start(cfg.ListenAddr))
 }
-
-

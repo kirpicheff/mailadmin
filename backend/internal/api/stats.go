@@ -33,7 +33,7 @@ func RegisterStatsHandlers(g *echo.Group, secret string) {
 			mQuery = mQuery.Where("domain IN (?)", db.DB.Table("domain_admins").Select("domain").Where("username = ?", claims.Username))
 		}
 		mQuery.Count(&mailboxesCount)
-		
+
 		// Считаем сумму квот, исключая 0 (безлимит), так как они искажают процент заполнения
 		mQuery.Select("COALESCE(SUM(quota), 0)").Where("quota > 0").Scan(&quotaLimit)
 

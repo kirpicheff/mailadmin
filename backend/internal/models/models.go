@@ -6,16 +6,16 @@ import (
 
 // Admin представляет таблицу admin
 type Admin struct {
-	Username       string    `gorm:"primaryKey;column:username;size:255" json:"username"`
-	Password       string    `gorm:"column:password;size:255" json:"-"` // Никогда не отдавать пароль через API
-	Created        time.Time `gorm:"column:created;not null;default:'2000-01-01 00:00:00'" json:"created"`
-	Modified       time.Time `gorm:"column:modified;not null;default:'2000-01-01 00:00:00'" json:"modified"`
-	Active         bool      `gorm:"column:active;not null;default:1" json:"active"`
-	SuperAdmin     bool      `gorm:"column:superadmin;not null;default:0" json:"superadmin"`
-	Phone          string    `gorm:"column:phone;size:30;default:''" json:"phone"`
-	EmailOther     string    `gorm:"column:email_other;size:255;default:''" json:"email_other"`
-	Token          string    `gorm:"column:token;size:255;default:''" json:"token"`
-	TokenValidity  time.Time `gorm:"column:token_validity;not null;default:'2000-01-01 00:00:00'" json:"token_validity"`
+	Username      string    `gorm:"primaryKey;column:username;size:255" json:"username"`
+	Password      string    `gorm:"column:password;size:255" json:"-"` // Никогда не отдавать пароль через API
+	Created       time.Time `gorm:"column:created;not null;default:'2000-01-01 00:00:00'" json:"created"`
+	Modified      time.Time `gorm:"column:modified;not null;default:'2000-01-01 00:00:00'" json:"modified"`
+	Active        bool      `gorm:"column:active;not null;default:1" json:"active"`
+	SuperAdmin    bool      `gorm:"column:superadmin;not null;default:0" json:"superadmin"`
+	Phone         string    `gorm:"column:phone;size:30;default:''" json:"phone"`
+	EmailOther    string    `gorm:"column:email_other;size:255;default:''" json:"email_other"`
+	Token         string    `gorm:"column:token;size:255;default:''" json:"token"`
+	TokenValidity time.Time `gorm:"column:token_validity;not null;default:'2000-01-01 00:00:00'" json:"token_validity"`
 	// Убираем строгое NOT NULL для успешной миграции существующих строк
 	PasswordExpiry time.Time `gorm:"column:password_expiry" json:"password_expiry"`
 }
@@ -174,7 +174,7 @@ type SieveRule struct {
 	ID        uint      `gorm:"primaryKey;autoIncrement;column:id" json:"id"`
 	Username  string    `gorm:"column:username;size:255;index" json:"username"` // email ящика или "GLOBAL" для общих правил
 	RulesJSON string    `gorm:"column:rules_json;type:text" json:"rules_json"`  // Хранит структуру для визуального редактора
-	Content   string    `gorm:"column:content;type:text" json:"content"`       // Сгенерированный итоговый код Sieve
+	Content   string    `gorm:"column:content;type:text" json:"content"`        // Сгенерированный итоговый код Sieve
 	Active    bool      `gorm:"column:active;not null;default:1" json:"active"`
 	Modified  time.Time `gorm:"column:modified;not null;default:CURRENT_TIMESTAMP;autoUpdateTime" json:"modified"`
 }

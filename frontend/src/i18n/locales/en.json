@@ -540,13 +540,16 @@
     "jail": "Jail",
     "ip_address": "IP Address",
     "unban": "Unban",
-    "confirm_unban": "Unban IP {ip} in jail {jail}?",
+    "whitelist": "Whitelist",
+    "confirm_unban": "Are you sure you want to unban IP {ip} in jail {jail}?",
+    "confirm_whitelist": "Are you sure you want to add {ip} to the permanent whitelist?",
     "empty": "No banned IPs found",
     "safe_status": "Server is safe, no active threats found",
     "search_placeholder": "Search by IP or jail...",
     "messages": {
       "unban_success": "IP successfully unbanned",
-      "unban_error": "Failed to unban IP"
+      "unban_error": "Failed to unban IP",
+      "whitelist_error": "Failed to add to whitelist"
     }
   },
   "server_logs": {

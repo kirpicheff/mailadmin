@@ -10,6 +10,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
+
+	"gopkg.in/ini.v1"
 )
 
 const SocketPath = "/var/run/mailadmin/agent.sock"
@@ -18,15 +21,16 @@ const LogPath = "/var/log/mailadmin-agent.log"
 type ActionType string
 
 const (
-	ActionFail2banUnban  ActionType = "fail2ban_unban"
-	ActionFail2banBan    ActionType = "fail2ban_ban"
-	ActionFail2banStatus ActionType = "fail2ban_status"
-	ActionQueueDelete    ActionType = "queue_delete"
-	ActionQueueFlush     ActionType = "queue_flush"
-	ActionQueueStatus    ActionType = "queue_status"
-	ActionImapStatus     ActionType = "imap_status"
-	ActionServiceStatus  ActionType = "service_status"
-	ActionPing           ActionType = "ping"
+	ActionFail2banUnban        ActionType = "fail2ban_unban"
+	ActionFail2banBan          ActionType = "fail2ban_ban"
+	ActionFail2banStatus       ActionType = "fail2ban_status"
+	ActionFail2banWhitelistAdd ActionType = "fail2ban_whitelist_add"
+	ActionQueueDelete          ActionType = "queue_delete"
+	ActionQueueFlush           ActionType = "queue_flush"
+	ActionQueueStatus          ActionType = "queue_status"
+	ActionImapStatus           ActionType = "imap_status"
+	ActionServiceStatus        ActionType = "service_status"
+	ActionPing                 ActionType = "ping"
 )
 
 type AgentRequest struct {
@@ -165,6 +169,66 @@ func Start() {
 				return
 			}
 			logger.Printf("Successfully banned %s from %s", parsedIP.String(), p.Jail)
+			w.WriteHeader(http.StatusOK)
+
+		case ActionFail2banWhitelistAdd:
+			var p struct {
+				IP string `json:"ip"`
+			}
+			if err := json.Unmarshal(req.Payload, &p); err != nil {
+				http.Error(w, "Invalid payload", http.StatusBadRequest)
+				return
+			}
+			parsedIP := net.ParseIP(p.IP)
+			if parsedIP == nil {
+				http.Error(w, "Invalid IP", http.StatusBadRequest)
+				return
+			}
+
+			jailPath := os.Getenv("F2B_JAIL_LOCAL_PATH")
+			if jailPath == "" {
+				jailPath = "/etc/fail2ban/jail.local"
+			}
+
+			cfg, err := ini.LoadSources(ini.LoadOptions{
+				PreserveSurroundedQuote: true,
+				IgnoreInlineComment:     true,
+			}, jailPath)
+			if err != nil {
+				logger.Printf("Failed to load %s: %v", jailPath, err)
+				http.Error(w, "Failed to load jail.local", http.StatusInternalServerError)
+				return
+			}
+
+			section := cfg.Section("DEFAULT")
+			key, err := section.GetKey("ignoreip")
+			if err != nil {
+				_, err = section.NewKey("ignoreip", parsedIP.String())
+				if err != nil {
+					http.Error(w, "Failed to create ignoreip key", http.StatusInternalServerError)
+					return
+				}
+			} else {
+				currentVal := key.Value()
+				if !strings.Contains(currentVal, parsedIP.String()) {
+					key.SetValue(strings.TrimSpace(currentVal) + " " + parsedIP.String())
+				}
+			}
+
+			if err := cfg.SaveTo(jailPath); err != nil {
+				logger.Printf("Failed to save %s: %v", jailPath, err)
+				http.Error(w, "Failed to save jail.local", http.StatusInternalServerError)
+				return
+			}
+
+			out, err := exec.Command("/usr/bin/fail2ban-client", "reload").CombinedOutput()
+			if err != nil {
+				logger.Printf("Fail2ban reload error: %v, output: %s", err, string(out))
+				http.Error(w, "Fail2ban reload error", http.StatusInternalServerError)
+				return
+			}
+
+			logger.Printf("Successfully added %s to whitelist in %s", parsedIP.String(), jailPath)
 			w.WriteHeader(http.StatusOK)
 
 		case ActionQueueDelete:

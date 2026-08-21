@@ -43,4 +43,3 @@ func NewValidator() *CustomValidator {
 
 	return &CustomValidator{validator: v}
 }
-

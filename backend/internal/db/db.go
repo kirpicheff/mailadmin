@@ -20,7 +20,7 @@ func InitDB(dsn string) {
 	if dsn == "" {
 		dsn = "user:password@tcp(127.0.0.1:3306)/mailadmin?charset=utf8&parseTime=True&loc=Local"
 	}
-	
+
 	// Принудительно заменяем utf8mb4 на utf8, чтобы избежать Error 1071 (длина индексов)
 	// на MariaDB/MySQL с лимитом 1000 байт. 255*3=765 < 1000.
 	if strings.Contains(dsn, "charset=utf8mb4") {
@@ -38,7 +38,7 @@ func InitDB(dsn string) {
 	DB.Exec("SET SESSION sql_mode = ''")
 
 	// 1. Автоматическое исправление кодировок для баз от старого PostfixAdmin
-	// Переходим на utf8 (utf8mb3) для всех таблиц. 
+	// Переходим на utf8 (utf8mb3) для всех таблиц.
 	// Это решает проблему Error 1071 (длина ключа), так как 255*3 = 765 байт, что влезает в лимит 1000 байт.
 	// Кириллица при этом поддерживается корректно.
 	var charSet string

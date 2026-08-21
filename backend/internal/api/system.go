@@ -20,6 +20,7 @@ import (
 	"github.com/user/mailadmin/internal/audit"
 	"github.com/user/mailadmin/internal/auth"
 	"github.com/user/mailadmin/internal/db"
+	"github.com/user/mailadmin/internal/geoip"
 	"github.com/user/mailadmin/internal/parser"
 )
 
@@ -57,7 +58,7 @@ func sendToAgent(action agent.ActionType, payload interface{}, queryParams map[s
 
 	buf := new(bytes.Buffer)
 	buf.ReadFrom(resp.Body)
-	
+
 	if resp.StatusCode != http.StatusOK {
 		return buf.String(), fmt.Errorf("agent returned %d", resp.StatusCode)
 	}
@@ -310,8 +311,9 @@ func RegisterSystemHandlers(g *echo.Group, secret string) {
 
 		jails := strings.Split(match[1], ",")
 		type BannedIP struct {
-			IP   string `json:"ip"`
-			Jail string `json:"jail"`
+			IP      string `json:"ip"`
+			Jail    string `json:"jail"`
+			Country string `json:"country"`
 		}
 		var result []BannedIP
 
@@ -329,7 +331,7 @@ func RegisterSystemHandlers(g *echo.Group, secret string) {
 			if len(iMatch) >= 2 {
 				ips := strings.Fields(iMatch[1])
 				for _, ip := range ips {
-					result = append(result, BannedIP{IP: ip, Jail: jail})
+					result = append(result, BannedIP{IP: ip, Jail: jail, Country: geoip.GetCountryCode(ip)})
 				}
 			}
 		}
@@ -362,6 +364,28 @@ func RegisterSystemHandlers(g *echo.Group, secret string) {
 		return c.NoContent(http.StatusNoContent)
 	})
 
+	system.POST("/fail2ban/whitelist", func(c echo.Context) error {
+		var req struct {
+			IP string `json:"ip"`
+		}
+		if err := c.Bind(&req); err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid payload"})
+		}
+
+		if req.IP == "" || !validIP.MatchString(req.IP) {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid ip address format"})
+		}
+
+		if _, err := sendToAgent(agent.ActionFail2banWhitelistAdd, map[string]string{"ip": req.IP}, nil); err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "agent error"})
+		}
+
+		claims := c.Get("user").(*auth.Claims)
+		audit.Log(db.DB, claims.Username, "system", "fail2ban whitelist add", fmt.Sprintf("ip=%s", req.IP))
+
+		return c.NoContent(http.StatusOK)
+	})
+
 	// Эндпоинт для отладки системных данных (теперь под авторизацией)
 	system.GET("/debug", func(c echo.Context) error {
 		ram := runCmdWithStdout("free", "-m")
@@ -382,7 +406,6 @@ func RegisterSystemHandlers(g *echo.Group, secret string) {
 		})
 	})
 }
-
 
 // runCmd выполняет команду с таймаутом 10 секунд (LOW-1 / HIGH-2)
 func runCmd(name string, arg ...string) string {
@@ -445,7 +468,9 @@ func getSystemStats() SystemStats {
 		for scanner.Scan() {
 			line := scanner.Text()
 			fields := strings.Fields(line)
-			if len(fields) < 2 { continue }
+			if len(fields) < 2 {
+				continue
+			}
 			key := strings.TrimSuffix(fields[0], ":")
 			val, _ := strconv.ParseInt(fields[1], 10, 64)
 
@@ -457,7 +482,7 @@ func getSystemStats() SystemStats {
 		}
 		if total > 0 {
 			s.RAMTotal = int(total / 1024)
-			
+
 			// ПРИОРИТЕТ: Ручное переопределение общего объема RAM (для Docker-in-LXC)
 			if override := os.Getenv("MAILADMIN_RAM_TOTAL"); override != "" {
 				if val, err := strconv.Atoi(override); err == nil {
@@ -480,7 +505,7 @@ func getSystemStats() SystemStats {
 			if s.RAMUsed <= 0 {
 				s.RAMUsed = int((total - available) / 1024)
 			}
-			
+
 			s.RAMPerc = int(float64(s.RAMUsed) / float64(s.RAMTotal) * 100)
 		}
 	}
@@ -602,7 +627,9 @@ func getSystemStats() SystemStats {
 			totalBanned := 0
 			for _, j := range jails {
 				j = strings.Trim(strings.TrimSpace(j), ",")
-				if j == "" { continue }
+				if j == "" {
+					continue
+				}
 				jOut, err := sendToAgent(agent.ActionFail2banStatus, nil, map[string]string{"jail": j})
 				if err != nil {
 					continue

@@ -25,7 +25,7 @@ func JWTMiddleware(secret string) echo.MiddlewareFunc {
 			}
 
 			tokenString := parts[1]
-			
+
 			var claims *Claims
 			var err error
 

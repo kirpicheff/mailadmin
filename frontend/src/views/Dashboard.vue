@@ -20,6 +20,7 @@ const bannedIPs = ref([])
 const searchIP = ref('')
 const showF2BModal = ref(false)
 const processingUnban = ref(null)
+const processingWhitelist = ref(null)
 let timer = null
 
 // Фильтрация списка заблокированных IP по введенному запросу с проверкой на null
@@ -34,6 +35,15 @@ const filteredBannedIPs = computed(() => {
     return ip.includes(query) || jail.includes(query)
   })
 })
+
+const getFlagEmoji = (countryCode) => {
+  if (!countryCode || countryCode.length !== 2) return '🌐'
+  const codePoints = countryCode
+    .toUpperCase()
+    .split('')
+    .map(char => 127397 + char.charCodeAt(0))
+  return String.fromCodePoint(...codePoints)
+}
 
 const formatBytes = (bytes) => {
   if (!bytes || bytes === 0) return '0 Bytes'
@@ -94,6 +104,23 @@ const unbanIP = async (ip, jail) => {
     alert(t('fail2ban.messages.unban_error'))
   } finally {
     processingUnban.value = null
+  }
+}
+
+const whitelistIP = async (ip, jail) => {
+  if (!confirm(t('fail2ban.confirm_whitelist', { ip }))) return
+  processingWhitelist.value = ip
+  try {
+    // Сначала добавляем в белый список
+    await api.post('/system/fail2ban/whitelist', { ip })
+    // Затем пытаемся разбанить (если IP уже в бане)
+    await api.delete('/system/fail2ban/unban', { params: { ip, jail } }).catch(() => {})
+    await fetchBannedIPs()
+    await fetchHealth()
+  } catch (error) {
+    alert(t('fail2ban.messages.whitelist_error'))
+  } finally {
+    processingWhitelist.value = null
   }
 }
 
@@ -387,16 +414,27 @@ onUnmounted(() => {
             </thead>
             <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
               <tr v-for="item in filteredBannedIPs" :key="item.ip + item.jail" class="group transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-                <td class="px-8 py-5 text-sm font-black text-slate-900 dark:text-white tracking-tight">{{ item.ip }}</td>
+                <td class="px-8 py-5 text-sm font-black text-slate-900 dark:text-white tracking-tight">
+                  <span class="mr-2 text-base" v-if="item.country" :title="item.country">{{ getFlagEmoji(item.country) }}</span>
+                  {{ item.ip }}
+                </td>
                 <td class="px-8 py-5">
                   <span class="px-2 py-1 bg-amber-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-black uppercase rounded-lg border border-amber-200 dark:border-amber-500/20">
                     {{ item.jail }}
                   </span>
                 </td>
-                <td class="px-8 py-5 text-right">
+                <td class="px-8 py-5 text-right flex justify-end gap-2">
+                  <button 
+                    @click="whitelistIP(item.ip, item.jail)" 
+                    :disabled="processingUnban === item.ip || processingWhitelist === item.ip"
+                    class="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50 flex items-center gap-2"
+                  >
+                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4" /></svg>
+                    {{ processingWhitelist === item.ip ? '...' : t('fail2ban.whitelist') }}
+                  </button>
                   <button 
                     @click="unbanIP(item.ip, item.jail)" 
-                    :disabled="processingUnban === item.ip"
+                    :disabled="processingUnban === item.ip || processingWhitelist === item.ip"
                     class="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-red-500/20 disabled:opacity-50"
                   >
                     {{ processingUnban === item.ip ? '...' : t('fail2ban.unban') }}
@@ -409,9 +447,11 @@ onUnmounted(() => {
             <div v-if="bannedIPs?.length > 0" class="text-slate-400 italic font-medium text-sm">
               {{ t('common.empty') }}
             </div>
-            <div v-else>
-              <div class="w-20 h-20 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-500 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-emerald-500/10 rotate-3 group-hover:rotate-0 transition-transform">
-                <svg class="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04M12 21.056c1.54 0 3.024-.317 4.382-.886L12.038 12 7.634 20.17A11.947 11.947 0 0112 21.056z" /></svg>
+            <div v-else class="flex flex-col items-center justify-center">
+              <div class="w-20 h-20 shrink-0 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-500 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-emerald-500/10 rotate-3 transition-transform hover:rotate-0">
+                <svg class="w-10 h-10 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
               </div>
               <p class="text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase">{{ t('fail2ban.safe_status') }}</p>
             </div>

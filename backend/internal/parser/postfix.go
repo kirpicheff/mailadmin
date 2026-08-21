@@ -45,19 +45,19 @@ type RejectInfo struct {
 
 // AnalysisResult содержит агрегированные результаты анализа логов
 type AnalysisResult struct {
-	TotalTransactions int            `json:"total_transactions"`
-	SentCount         int            `json:"sent_count"`
-	DeferredCount     int            `json:"deferred_count"`
-	BouncedCount      int            `json:"bounced_count"`
-	RejectCount       int            `json:"reject_count"`
-	AverageDelay      float64        `json:"average_delay"`
-	Transactions      []Transaction  `json:"transactions"`
-	Rejects           []RejectInfo   `json:"rejects"`
-	TopSenders        []KeyValue     `json:"top_senders"`
-	TopRecipients     []KeyValue     `json:"top_recipients"`
-	TopClients        []KeyValue     `json:"top_clients"`
-	TopErrors         []KeyValue     `json:"top_errors"`
-	TopSASLFailures   []KeyValue     `json:"top_sasl_failures"`
+	TotalTransactions int           `json:"total_transactions"`
+	SentCount         int           `json:"sent_count"`
+	DeferredCount     int           `json:"deferred_count"`
+	BouncedCount      int           `json:"bounced_count"`
+	RejectCount       int           `json:"reject_count"`
+	AverageDelay      float64       `json:"average_delay"`
+	Transactions      []Transaction `json:"transactions"`
+	Rejects           []RejectInfo  `json:"rejects"`
+	TopSenders        []KeyValue    `json:"top_senders"`
+	TopRecipients     []KeyValue    `json:"top_recipients"`
+	TopClients        []KeyValue    `json:"top_clients"`
+	TopErrors         []KeyValue    `json:"top_errors"`
+	TopSASLFailures   []KeyValue    `json:"top_sasl_failures"`
 }
 
 // KeyValue вспомогательная структура для топов
@@ -284,7 +284,7 @@ func ParsePostfixLogs(lines []string) *AnalysisResult {
 			if del.To != "" {
 				recipientsMap[del.To]++
 			}
-			
+
 			switch del.Status {
 			case "sent":
 				result.SentCount++

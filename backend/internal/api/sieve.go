@@ -40,7 +40,6 @@ type Filter struct {
 	Active     bool        `json:"active"`
 }
 
-
 // isValidSieveUsername проверяет, что username является валидным email (MED-2)
 func isValidSieveUsername(username string) bool {
 	if strings.Contains(username, "/") || strings.Contains(username, "\\") || strings.Contains(username, "..") {
@@ -78,12 +77,12 @@ func resolveSievePath(username string, cfg *config.Config) (string, error) {
 							parts := strings.SplitN(line, "=", 2)
 							key := strings.TrimSpace(parts[0])
 							value := strings.TrimSpace(parts[1])
-							
+
 							if idx := strings.Index(value, "#"); idx != -1 {
 								value = strings.TrimSpace(value[:idx])
 							}
 							value = strings.Trim(value, `"'`)
-							
+
 							if key == "sieve" {
 								sieveSetting = value
 							} else if key == "sieve_before" {
@@ -227,7 +226,7 @@ func RegisterSieveHandlers(g *echo.Group, secret string, cfg *config.Config) {
 			if err != nil {
 				return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to resolve sieve path"})
 			}
-			
+
 			// Проверка на выход за пределы папки (защита от path traversal)
 			cleanPath := filepath.Clean(safePath)
 			if !strings.HasPrefix(cleanPath, filepath.Clean(cfg.SieveRoot)) && !strings.HasPrefix(cleanPath, filepath.Clean(cfg.MailRoot)) {
@@ -319,14 +318,13 @@ func generateSieveCode(rulesJSON string) string {
 
 	code := "require [\"fileinto\", \"copy\", \"envelope\", \"reject\", \"imap4flags\", \"regex\", \"vacation\", \"body\"];\n\n"
 
-
 	for _, f := range filters {
 		if !f.Active || len(f.Conditions) == 0 {
 			continue
 		}
 
 		code += fmt.Sprintf("# Filter: %s\n", f.Name)
-		
+
 		logic := "anyof"
 		if f.MatchAll {
 			logic = "allof"
@@ -340,11 +338,18 @@ func generateSieveCode(rulesJSON string) string {
 				op := ":contains"
 				isNot := false
 				switch c.Operator {
-				case "not_contains": op = ":contains"; isNot = true
-				case "is": op = ":is"
-				case "not_is": op = ":is"; isNot = true
-				case "matches": op = ":matches"
-				case "regex": op = ":regex"
+				case "not_contains":
+					op = ":contains"
+					isNot = true
+				case "is":
+					op = ":is"
+				case "not_is":
+					op = ":is"
+					isNot = true
+				case "matches":
+					op = ":matches"
+				case "regex":
+					op = ":regex"
 				}
 				s = fmt.Sprintf("header %s \"%s\" \"%s\"", op, c.Field, c.Value)
 				if isNot {
@@ -365,7 +370,7 @@ func generateSieveCode(rulesJSON string) string {
 		}
 
 		code += fmt.Sprintf("if %s (%s) {\n", logic, strings.Join(condStrings, ", "))
-		
+
 		for _, a := range f.Actions {
 			switch a.Type {
 			case "fileinto":
@@ -492,12 +497,12 @@ func parseSieveCode(code string) []Filter {
 						op = "regex"
 					} else if strings.Contains(lowerCp, ":value") {
 						// Для :value "ge" и т.д. часто используется i;ascii-numeric
-						op = "matches" 
+						op = "matches"
 					}
 
 					quotes := extractQuotes(cp)
 					if len(quotes) >= 2 {
-						// В Sieve параметры (:value, :comparator) идут в начале, 
+						// В Sieve параметры (:value, :comparator) идут в начале,
 						// а имя заголовка и значение — в конце.
 						cond.Field = quotes[len(quotes)-2]
 						cond.Value = quotes[len(quotes)-1]
@@ -628,5 +633,3 @@ func normalizeField(f string) string {
 	}
 	return f
 }
-
-

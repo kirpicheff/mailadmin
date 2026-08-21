@@ -10,11 +10,11 @@ import (
 
 // EmailMessage представляет структуру письма
 type EmailMessage struct {
-	From     string
-	To       []string
-	Subject  string
-	Body     string
-	IsHTML   bool
+	From    string
+	To      []string
+	Subject string
+	Body    string
+	IsHTML  bool
 }
 
 // SendEmail отправляет письмо через локальный или внешний SMTP с поддержкой обхода проверки просроченных TLS-сертификатов при STARTTLS
@@ -28,7 +28,7 @@ func SendEmail(msg *EmailMessage) error {
 	header["To"] = strings.Join(msg.To, ",")
 	header["Subject"] = msg.Subject
 	header["MIME-Version"] = "1.0"
-	
+
 	contentType := "text/plain; charset=\"utf-8\""
 	if msg.IsHTML {
 		contentType = "text/html; charset=\"utf-8\""
@@ -83,49 +83,49 @@ func SendEmail(msg *EmailMessage) error {
 
 // SendWithTLS для случаев, когда нужен защищенный порт (например 465 или 587 с STARTTLS)
 func SendWithTLS(host, port, user, password string, msg *EmailMessage) error {
-    auth := smtp.PlainAuth("", user, password, host)
-    tlsconfig := &tls.Config{
-        ServerName: host, // Проверяем сертификат сервера
-    }
+	auth := smtp.PlainAuth("", user, password, host)
+	tlsconfig := &tls.Config{
+		ServerName: host, // Проверяем сертификат сервера
+	}
 
-    conn, err := tls.Dial("tcp", host+":"+port, tlsconfig)
-    if err != nil {
-        return err
-    }
+	conn, err := tls.Dial("tcp", host+":"+port, tlsconfig)
+	if err != nil {
+		return err
+	}
 
-    c, err := smtp.NewClient(conn, host)
-    if err != nil {
-        return err
-    }
+	c, err := smtp.NewClient(conn, host)
+	if err != nil {
+		return err
+	}
 
-    if err = c.Auth(auth); err != nil {
-        return err
-    }
+	if err = c.Auth(auth); err != nil {
+		return err
+	}
 
-    if err = c.Mail(msg.From); err != nil {
-        return err
-    }
+	if err = c.Mail(msg.From); err != nil {
+		return err
+	}
 
-    for _, addr := range msg.To {
-        if err = c.Rcpt(addr); err != nil {
-            return err
-        }
-    }
+	for _, addr := range msg.To {
+		if err = c.Rcpt(addr); err != nil {
+			return err
+		}
+	}
 
-    w, err := c.Data()
-    if err != nil {
-        return err
-    }
+	w, err := c.Data()
+	if err != nil {
+		return err
+	}
 
-    _, err = w.Write([]byte(msg.Body))
-    if err != nil {
-        return err
-    }
+	_, err = w.Write([]byte(msg.Body))
+	if err != nil {
+		return err
+	}
 
-    err = w.Close()
-    if err != nil {
-        return err
-    }
+	err = w.Close()
+	if err != nil {
+		return err
+	}
 
-    return c.Quit()
+	return c.Quit()
 }

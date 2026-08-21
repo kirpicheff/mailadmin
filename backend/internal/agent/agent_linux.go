@@ -1,4 +1,5 @@
 //go:build linux
+
 package agent
 
 import (
@@ -51,7 +52,7 @@ func checkPeerCred(conn net.Conn) error {
 		uid = ucred.Uid
 		gid = ucred.Gid
 	})
-	
+
 	_ = uid
 	_ = gid
 
