@@ -17,7 +17,10 @@ const stats = ref({
 const health = ref(null)
 const loading = ref(true)
 const bannedIPs = ref([])
+const whitelistedIPs = ref([])
 const searchIP = ref('')
+const newWhitelistIP = ref('')
+const activeTab = ref('banned')
 const showF2BModal = ref(false)
 const processingUnban = ref(null)
 const processingWhitelist = ref(null)
@@ -80,9 +83,19 @@ const fetchBannedIPs = async () => {
   try {
     const response = await api.get('/system/fail2ban')
     bannedIPs.value = response.data || []
+    await fetchWhitelistedIPs()
     showF2BModal.value = true
   } catch (error) {
     console.error('Failed to fetch banned IPs:', error)
+  }
+}
+
+const fetchWhitelistedIPs = async () => {
+  try {
+    const response = await api.get('/system/fail2ban/whitelist')
+    whitelistedIPs.value = response.data || []
+  } catch (error) {
+    console.error('Failed to fetch whitelist IPs:', error)
   }
 }
 
@@ -104,14 +117,42 @@ const whitelistIP = async (ip, jail) => {
   if (!confirm(t('fail2ban.confirm_whitelist', { ip }))) return
   processingWhitelist.value = ip
   try {
-    // Сначала добавляем в белый список
     await api.post('/system/fail2ban/whitelist', { ip })
-    // Затем пытаемся разбанить (если IP уже в бане)
-    await api.delete('/system/fail2ban/unban', { params: { ip, jail } }).catch(() => {})
+    if (jail) {
+      await api.delete('/system/fail2ban/unban', { params: { ip, jail } }).catch(() => {})
+    }
     await fetchBannedIPs()
     await fetchHealth()
   } catch (error) {
     alert(t('fail2ban.messages.whitelist_error'))
+  } finally {
+    processingWhitelist.value = null
+  }
+}
+
+const addWhitelistIP = async () => {
+  const ip = newWhitelistIP.value.trim()
+  if (!ip) return
+  processingWhitelist.value = ip
+  try {
+    await api.post('/system/fail2ban/whitelist', { ip })
+    newWhitelistIP.value = ''
+    await fetchWhitelistedIPs()
+  } catch (error) {
+    alert(t('fail2ban.messages.whitelist_error'))
+  } finally {
+    processingWhitelist.value = null
+  }
+}
+
+const removeWhitelistIP = async (ip) => {
+  if (!confirm(t('fail2ban.confirm_whitelist_remove', { ip }))) return
+  processingWhitelist.value = ip
+  try {
+    await api.delete('/system/fail2ban/whitelist', { params: { ip } })
+    await fetchWhitelistedIPs()
+  } catch (error) {
+    alert(t('fail2ban.messages.whitelist_remove_error'))
   } finally {
     processingWhitelist.value = null
   }
@@ -371,17 +412,36 @@ onUnmounted(() => {
       <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" @click="showF2BModal = false"></div>
       
       <div class="glass-panel w-full max-w-4xl overflow-hidden relative animate-in zoom-in-95 duration-300">
-        <div class="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/10">
-          <div>
-            <h2 class="text-2xl font-black text-slate-900 dark:text-white leading-none">{{ t('fail2ban.title') }}</h2>
-            <p class="text-xs text-slate-500 font-bold uppercase tracking-widest mt-2">{{ t('fail2ban.banned_ips') }}</p>
+        <div class="p-8 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/10">
+          <div class="flex justify-between items-center mb-6">
+            <div>
+              <h2 class="text-2xl font-black text-slate-900 dark:text-white leading-none">{{ t('fail2ban.title') }}</h2>
+            </div>
+            <button @click="showF2BModal = false" class="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-xl transition-colors">
+              <svg class="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
           </div>
-          <button @click="showF2BModal = false" class="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-xl transition-colors">
-            <svg class="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
+          
+          <div class="flex gap-4 border-b border-slate-200 dark:border-slate-700">
+            <button 
+              @click="activeTab = 'banned'"
+              :class="activeTab === 'banned' ? 'border-mail-blue-500 text-mail-blue-600 dark:text-mail-blue-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'"
+              class="pb-3 border-b-2 font-bold text-sm uppercase tracking-widest transition-colors px-2"
+            >
+              {{ t('fail2ban.banned_ips') }}
+            </button>
+            <button 
+              @click="activeTab = 'whitelist'"
+              :class="activeTab === 'whitelist' ? 'border-mail-blue-500 text-mail-blue-600 dark:text-mail-blue-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'"
+              class="pb-3 border-b-2 font-bold text-sm uppercase tracking-widest transition-colors px-2 flex items-center gap-2"
+            >
+              {{ t('fail2ban.whitelist_tab', 'ИСКЛЮЧЕНИЯ') }}
+            </button>
+          </div>
         </div>
 
-        <!-- Поиск по заблокированным IP (отображается если есть заблокированные IP) -->
+        <!-- Tab: Banned -->
+        <div v-if="activeTab === 'banned'">
         <div v-if="bannedIPs?.length > 0" class="px-8 py-4 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
           <div class="relative">
             <input 
@@ -453,6 +513,61 @@ onUnmounted(() => {
                 </svg>
               </div>
               <p class="text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase">{{ t('fail2ban.safe_status') }}</p>
+            </div>
+          </div>
+          </div>
+        </div>
+
+        <!-- Tab: Whitelist -->
+        <div v-if="activeTab === 'whitelist'">
+          <div class="px-8 py-4 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
+            <div class="flex gap-4">
+              <input 
+                v-model="newWhitelistIP" 
+                type="text" 
+                placeholder="IP адрес (например 192.168.1.1)" 
+                class="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 rounded-xl text-xs font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-mail-blue-500/50 transition-all"
+                @keyup.enter="addWhitelistIP"
+              />
+              <button 
+                @click="addWhitelistIP"
+                :disabled="processingWhitelist === newWhitelistIP || !newWhitelistIP.trim()"
+                class="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50"
+              >
+                {{ t('common.add', 'ДОБАВИТЬ') }}
+              </button>
+            </div>
+          </div>
+
+          <div class="p-0 max-h-[60vh] overflow-y-auto">
+            <table v-if="whitelistedIPs?.length > 0" class="w-full text-left">
+              <thead class="sticky top-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md z-10 border-b border-slate-100 dark:border-slate-800">
+                <tr>
+                  <th class="px-8 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">{{ t('fail2ban.ip_address') }}</th>
+                  <th class="px-8 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">{{ t('common.actions') }}</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                <tr v-for="ip in whitelistedIPs" :key="ip" class="group transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                  <td class="px-8 py-5 text-sm font-black text-slate-900 dark:text-white tracking-tight whitespace-nowrap">
+                    {{ ip }}
+                  </td>
+                  <td class="px-8 py-5 text-right whitespace-nowrap w-[1%]">
+                    <button 
+                      @click="removeWhitelistIP(ip)" 
+                      :disabled="processingWhitelist === ip"
+                      class="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-red-500/20 disabled:opacity-50"
+                    >
+                      {{ processingWhitelist === ip ? '...' : t('common.delete', 'УДАЛИТЬ') }}
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div v-else class="py-24 text-center">
+              <div class="text-slate-400 italic font-medium text-sm">
+                {{ t('common.empty') }}
+              </div>
             </div>
           </div>
         </div>

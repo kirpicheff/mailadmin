@@ -24,8 +24,10 @@ const (
 	ActionFail2banUnban        ActionType = "fail2ban_unban"
 	ActionFail2banBan          ActionType = "fail2ban_ban"
 	ActionFail2banStatus       ActionType = "fail2ban_status"
-	ActionFail2banWhitelistAdd ActionType = "fail2ban_whitelist_add"
-	ActionQueueDelete          ActionType = "queue_delete"
+	ActionFail2banWhitelistAdd    ActionType = "fail2ban_whitelist_add"
+	ActionFail2banWhitelistList   ActionType = "fail2ban_whitelist_list"
+	ActionFail2banWhitelistDelete ActionType = "fail2ban_whitelist_delete"
+	ActionQueueDelete             ActionType = "queue_delete"
 	ActionQueueFlush           ActionType = "queue_flush"
 	ActionQueueStatus          ActionType = "queue_status"
 	ActionImapStatus           ActionType = "imap_status"
@@ -185,20 +187,13 @@ func Start() {
 				return
 			}
 
-			jailPath := os.Getenv("F2B_JAIL_LOCAL_PATH")
-			if jailPath == "" {
-				jailPath = "/etc/fail2ban/jail.local"
-			}
-
-			cfg, err := ini.LoadSources(ini.LoadOptions{
-				PreserveSurroundedQuote: true,
-				IgnoreInlineComment:     true,
-			}, jailPath)
+			jailPath, cfg, err := loadJailLocal()
 			if err != nil {
-				logger.Printf("Failed to load %s: %v", jailPath, err)
+				logger.Printf("Failed to load jail.local: %v", err)
 				http.Error(w, "Failed to load jail.local", http.StatusInternalServerError)
 				return
 			}
+
 
 			section := cfg.Section("DEFAULT")
 			key, err := section.GetKey("ignoreip")
@@ -229,6 +224,72 @@ func Start() {
 			}
 
 			logger.Printf("Successfully added %s to whitelist in %s", parsedIP.String(), jailPath)
+			w.WriteHeader(http.StatusOK)
+
+		case ActionFail2banWhitelistList:
+			_, cfg, err := loadJailLocal()
+			if err != nil {
+				logger.Printf("Failed to load jail.local: %v", err)
+				http.Error(w, "Failed to load jail.local", http.StatusInternalServerError)
+				return
+			}
+			
+			var ips []string
+			section := cfg.Section("DEFAULT")
+			if key, err := section.GetKey("ignoreip"); err == nil {
+				for _, ip := range strings.Fields(key.Value()) {
+					if ip != "" {
+						ips = append(ips, ip)
+					}
+				}
+			}
+			
+			resp, _ := json.Marshal(ips)
+			w.Header().Set("Content-Type", "application/json")
+			w.Write(resp)
+
+		case ActionFail2banWhitelistDelete:
+			var p struct {
+				IP string `json:"ip"`
+			}
+			if err := json.Unmarshal(req.Payload, &p); err != nil {
+				http.Error(w, "Invalid payload", http.StatusBadRequest)
+				return
+			}
+			
+			jailPath, cfg, err := loadJailLocal()
+			if err != nil {
+				logger.Printf("Failed to load jail.local: %v", err)
+				http.Error(w, "Failed to load jail.local", http.StatusInternalServerError)
+				return
+			}
+
+			section := cfg.Section("DEFAULT")
+			if key, err := section.GetKey("ignoreip"); err == nil {
+				currentVal := key.Value()
+				var newIPs []string
+				for _, ip := range strings.Fields(currentVal) {
+					if ip != p.IP {
+						newIPs = append(newIPs, ip)
+					}
+				}
+				key.SetValue(strings.Join(newIPs, " "))
+				
+				if err := cfg.SaveTo(jailPath); err != nil {
+					logger.Printf("Failed to save %s: %v", jailPath, err)
+					http.Error(w, "Failed to save jail.local", http.StatusInternalServerError)
+					return
+				}
+
+				out, err := exec.Command("/usr/bin/fail2ban-client", "reload").CombinedOutput()
+				if err != nil {
+					logger.Printf("Fail2ban reload error: %v, output: %s", err, string(out))
+					http.Error(w, "Fail2ban reload error", http.StatusInternalServerError)
+					return
+				}
+			}
+
+			logger.Printf("Successfully removed %s from whitelist in %s", p.IP, jailPath)
 			w.WriteHeader(http.StatusOK)
 
 		case ActionQueueDelete:
@@ -322,12 +383,29 @@ func Start() {
 	})
 
 	server := &http.Server{Handler: mux}
-	// В идеале мы должны проверять SO_PEERCRED при Accept, но net/http не предоставляет к этому легкого доступа.
-	// Для продакшена можно использовать кастомную обертку над слушателем.
 	// В рамках этого рефакторинга права на файл (0660 root:mailadmin) обеспечивают основную защиту.
 
 	logger.Printf("Agent listening on %s", SocketPath)
 	if err := server.Serve(listener); err != nil {
 		logger.Fatalf("Server error: %v", err)
 	}
+}
+
+func loadJailLocal() (string, *ini.File, error) {
+	jailPath := os.Getenv("F2B_JAIL_LOCAL_PATH")
+	if jailPath == "" {
+		jailPath = "/etc/fail2ban/jail.local"
+	}
+
+	realPath, err := filepath.EvalSymlinks(jailPath)
+	if err == nil {
+		jailPath = realPath
+	}
+
+	cfg, err := ini.LoadSources(ini.LoadOptions{
+		PreserveSurroundedQuote: true,
+		IgnoreInlineComment:     true,
+	}, jailPath)
+
+	return jailPath, cfg, err
 }

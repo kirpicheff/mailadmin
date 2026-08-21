@@ -386,6 +386,38 @@ func RegisterSystemHandlers(g *echo.Group, secret string) {
 		return c.NoContent(http.StatusOK)
 	})
 
+	system.GET("/fail2ban/whitelist", func(c echo.Context) error {
+		resp, err := sendToAgent(agent.ActionFail2banWhitelistList, nil, nil)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "agent error"})
+		}
+		
+		var ips []string
+		if len(resp) > 0 {
+			if err := json.Unmarshal([]byte(resp), &ips); err != nil {
+				return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to parse agent response"})
+			}
+		}
+		
+		return c.JSON(http.StatusOK, ips)
+	})
+
+	system.DELETE("/fail2ban/whitelist", func(c echo.Context) error {
+		ip := c.QueryParam("ip")
+		if ip == "" || !validIP.MatchString(ip) {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid ip address format"})
+		}
+
+		if _, err := sendToAgent(agent.ActionFail2banWhitelistDelete, map[string]string{"ip": ip}, nil); err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "agent error"})
+		}
+
+		claims := c.Get("user").(*auth.Claims)
+		audit.Log(db.DB, claims.Username, "system", "fail2ban whitelist delete", fmt.Sprintf("ip=%s", ip))
+
+		return c.NoContent(http.StatusNoContent)
+	})
+
 	// Эндпоинт для отладки системных данных (теперь под авторизацией)
 	system.GET("/debug", func(c echo.Context) error {
 		ram := runCmdWithStdout("free", "-m")
