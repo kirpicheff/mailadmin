@@ -18,6 +18,12 @@ import (
 const SocketPath = "/var/run/mailadmin/agent.sock"
 const LogPath = "/var/log/mailadmin-agent.log"
 
+func init() {
+	// В gopkg.in/ini.v1 по умолчанию "DEFAULT" используется как безымянная глобальная секция,
+	// из-за чего заголовок [DEFAULT] не пишется в файл. Fail2Ban требует этот заголовок.
+	ini.DefaultSection = "GLOBAL_UNNAMED_SECTION"
+}
+
 type ActionType string
 
 const (
