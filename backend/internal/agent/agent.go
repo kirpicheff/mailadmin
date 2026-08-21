@@ -407,5 +407,28 @@ func loadJailLocal() (string, *ini.File, error) {
 		IgnoreInlineComment:     true,
 	}, jailPath)
 
+	if err != nil {
+		// Файл не существует или не читается - создаем пустой
+		cfg = ini.Empty()
+		cfg.NewSection("DEFAULT")
+		err = nil
+	} else {
+		// Проверка на кривой файл (ключи без секции [DEFAULT])
+		emptySection := cfg.Section("")
+		if len(emptySection.Keys()) > 0 {
+			var rescuedIPs string
+			if key, errGet := emptySection.GetKey("ignoreip"); errGet == nil {
+				rescuedIPs = key.Value()
+			}
+			
+			// Пересоздаем правильный конфиг
+			cfg = ini.Empty()
+			defSec, _ := cfg.NewSection("DEFAULT")
+			if rescuedIPs != "" {
+				defSec.NewKey("ignoreip", rescuedIPs)
+			}
+		}
+	}
+
 	return jailPath, cfg, err
 }

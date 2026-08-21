@@ -124,7 +124,8 @@ const whitelistIP = async (ip, jail) => {
     await fetchBannedIPs()
     await fetchHealth()
   } catch (error) {
-    alert(t('fail2ban.messages.whitelist_error'))
+    const srvErr = error.response?.data?.error
+    alert(srvErr ? `${t('fail2ban.messages.whitelist_error')}: ${srvErr}` : t('fail2ban.messages.whitelist_error'))
   } finally {
     processingWhitelist.value = null
   }
@@ -139,7 +140,8 @@ const addWhitelistIP = async () => {
     newWhitelistIP.value = ''
     await fetchWhitelistedIPs()
   } catch (error) {
-    alert(t('fail2ban.messages.whitelist_error'))
+    const srvErr = error.response?.data?.error
+    alert(srvErr ? `${t('fail2ban.messages.whitelist_error')}: ${srvErr}` : t('fail2ban.messages.whitelist_error'))
   } finally {
     processingWhitelist.value = null
   }
@@ -152,7 +154,8 @@ const removeWhitelistIP = async (ip) => {
     await api.delete('/system/fail2ban/whitelist', { params: { ip } })
     await fetchWhitelistedIPs()
   } catch (error) {
-    alert(t('fail2ban.messages.whitelist_remove_error'))
+    const srvErr = error.response?.data?.error
+    alert(srvErr ? `${t('fail2ban.messages.whitelist_remove_error')}: ${srvErr}` : t('fail2ban.messages.whitelist_remove_error'))
   } finally {
     processingWhitelist.value = null
   }

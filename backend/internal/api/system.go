@@ -376,8 +376,8 @@ func RegisterSystemHandlers(g *echo.Group, secret string) {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid ip address format"})
 		}
 
-		if _, err := sendToAgent(agent.ActionFail2banWhitelistAdd, map[string]string{"ip": req.IP}, nil); err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "agent error"})
+		if agentResp, err := sendToAgent(agent.ActionFail2banWhitelistAdd, map[string]string{"ip": req.IP}, nil); err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "agent error: " + agentResp})
 		}
 
 		claims := c.Get("user").(*auth.Claims)
@@ -389,7 +389,7 @@ func RegisterSystemHandlers(g *echo.Group, secret string) {
 	system.GET("/fail2ban/whitelist", func(c echo.Context) error {
 		resp, err := sendToAgent(agent.ActionFail2banWhitelistList, nil, nil)
 		if err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "agent error"})
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "agent error: " + resp})
 		}
 		
 		var ips []string
@@ -408,8 +408,8 @@ func RegisterSystemHandlers(g *echo.Group, secret string) {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid ip address format"})
 		}
 
-		if _, err := sendToAgent(agent.ActionFail2banWhitelistDelete, map[string]string{"ip": ip}, nil); err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "agent error"})
+		if agentResp, err := sendToAgent(agent.ActionFail2banWhitelistDelete, map[string]string{"ip": ip}, nil); err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "agent error: " + agentResp})
 		}
 
 		claims := c.Get("user").(*auth.Claims)
