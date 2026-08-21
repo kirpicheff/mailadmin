@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -35,8 +36,8 @@ func main() {
 	// Инициализируем БД
 	db.InitDB(cfg.DBDSN)
 
-	// Инициализируем GeoIP базу (Lazy loading)
-	geoip.InitGeoIP("data")
+	// Инициализируем GeoIP базу (Lazy loading во временной папке ОС)
+	geoip.InitGeoIP(os.TempDir())
 
 	e := echo.New()
 
