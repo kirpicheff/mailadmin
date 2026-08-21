@@ -36,14 +36,7 @@ const filteredBannedIPs = computed(() => {
   })
 })
 
-const getFlagEmoji = (countryCode) => {
-  if (!countryCode || countryCode.length !== 2) return '🌐'
-  const codePoints = countryCode
-    .toUpperCase()
-    .split('')
-    .map(char => 127397 + char.charCodeAt(0))
-  return String.fromCodePoint(...codePoints)
-}
+
 
 const formatBytes = (bytes) => {
   if (!bytes || bytes === 0) return '0 Bytes'
@@ -377,7 +370,7 @@ onUnmounted(() => {
     <div v-if="showF2BModal" class="fixed inset-0 z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
       <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" @click="showF2BModal = false"></div>
       
-      <div class="glass-panel w-full max-w-2xl overflow-hidden relative animate-in zoom-in-95 duration-300">
+      <div class="glass-panel w-full max-w-4xl overflow-hidden relative animate-in zoom-in-95 duration-300">
         <div class="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/10">
           <div>
             <h2 class="text-2xl font-black text-slate-900 dark:text-white leading-none">{{ t('fail2ban.title') }}</h2>
@@ -414,31 +407,37 @@ onUnmounted(() => {
             </thead>
             <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
               <tr v-for="item in filteredBannedIPs" :key="item.ip + item.jail" class="group transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-                <td class="px-8 py-5 text-sm font-black text-slate-900 dark:text-white tracking-tight">
-                  <span class="mr-2 text-base" v-if="item.country" :title="item.country">{{ getFlagEmoji(item.country) }}</span>
-                  {{ item.ip }}
+                <td class="px-8 py-5 text-sm font-black text-slate-900 dark:text-white tracking-tight whitespace-nowrap">
+                  <div class="flex items-center gap-3">
+                    <span v-if="item.country" class="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-500 rounded-md border border-slate-200 dark:border-slate-700 uppercase" :title="item.country">
+                      {{ item.country }}
+                    </span>
+                    <span>{{ item.ip }}</span>
+                  </div>
                 </td>
-                <td class="px-8 py-5">
+                <td class="px-8 py-5 whitespace-nowrap">
                   <span class="px-2 py-1 bg-amber-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-black uppercase rounded-lg border border-amber-200 dark:border-amber-500/20">
                     {{ item.jail }}
                   </span>
                 </td>
-                <td class="px-8 py-5 text-right flex justify-end gap-2">
-                  <button 
-                    @click="whitelistIP(item.ip, item.jail)" 
-                    :disabled="processingUnban === item.ip || processingWhitelist === item.ip"
-                    class="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50 flex items-center gap-2"
-                  >
-                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4" /></svg>
-                    {{ processingWhitelist === item.ip ? '...' : t('fail2ban.whitelist') }}
-                  </button>
-                  <button 
-                    @click="unbanIP(item.ip, item.jail)" 
-                    :disabled="processingUnban === item.ip || processingWhitelist === item.ip"
-                    class="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-red-500/20 disabled:opacity-50"
-                  >
-                    {{ processingUnban === item.ip ? '...' : t('fail2ban.unban') }}
-                  </button>
+                <td class="px-8 py-5 text-right whitespace-nowrap w-[1%]">
+                  <div class="flex justify-end gap-2">
+                    <button 
+                      @click="whitelistIP(item.ip, item.jail)" 
+                      :disabled="processingUnban === item.ip || processingWhitelist === item.ip"
+                      class="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50 flex items-center gap-2"
+                    >
+                      <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4" /></svg>
+                      {{ processingWhitelist === item.ip ? '...' : t('fail2ban.whitelist') }}
+                    </button>
+                    <button 
+                      @click="unbanIP(item.ip, item.jail)" 
+                      :disabled="processingUnban === item.ip || processingWhitelist === item.ip"
+                      class="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-red-500/20 disabled:opacity-50"
+                    >
+                      {{ processingUnban === item.ip ? '...' : t('fail2ban.unban') }}
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>
