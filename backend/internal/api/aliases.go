@@ -41,8 +41,8 @@ func RegisterAliasHandlers(g *echo.Group, secret string) {
 		}
 
 		if search != "" {
-			s := "%" + search + "%"
-			dbQuery = dbQuery.Where("address LIKE ? OR goto LIKE ?", s, s)
+			s := "%" + strings.ToLower(search) + "%"
+			dbQuery = dbQuery.Where("LOWER(address) LIKE ? OR LOWER(goto) LIKE ?", s, s)
 		} else if domain != "" {
 			dbQuery = dbQuery.Where("domain = ?", domain)
 		} else {
@@ -52,6 +52,11 @@ func RegisterAliasHandlers(g *echo.Group, secret string) {
 		// Фильтр по первой букве (алфавитная пагинация)
 		if letter := c.QueryParam("letter"); letter != "" {
 			dbQuery = dbQuery.Where("address LIKE ?", letter+"%")
+		}
+
+		// Фильтр по статусу
+		if active := c.QueryParam("active"); active != "" {
+			dbQuery = dbQuery.Where("active = ?", active == "true")
 		}
 
 		var total int64
@@ -201,8 +206,8 @@ func RegisterAliasHandlers(g *echo.Group, secret string) {
 		}
 
 		if search != "" {
-			s := "%" + search + "%"
-			dbQuery = dbQuery.Where("alias_domain LIKE ? OR target_domain LIKE ?", s, s)
+			s := "%" + strings.ToLower(search) + "%"
+			dbQuery = dbQuery.Where("LOWER(alias_domain) LIKE ? OR LOWER(target_domain) LIKE ?", s, s)
 		} else if domain != "" {
 			dbQuery = dbQuery.Where("target_domain = ?", domain)
 		} else {

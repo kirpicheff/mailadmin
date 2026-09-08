@@ -217,16 +217,29 @@
             </template>
 
             <!-- Load More -->
-            <tr v-if="hasMore">
-              <td colspan="6" class="px-8 py-8 text-center">
-                <button @click="loadMore" :disabled="loading" class="px-10 py-3 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-mail-blue-600 hover:text-white transition-all shadow-sm">
-                  {{ loading ? t('common.loading') : t('mailboxes.load_more') }}
+            <tr v-if="hasMore && !loading">
+              <td colspan="7" class="px-8 py-8 text-center">
+                <button @click="loadMore" class="px-10 py-3 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-mail-blue-600 hover:text-white transition-all shadow-sm">
+                  {{ t('mailboxes.load_more') }}
                 </button>
               </td>
             </tr>
 
+            <!-- Loading indicator when fetching more or initial -->
+            <tr v-if="loading">
+              <td colspan="7" class="px-8 py-10 text-center">
+                <div class="inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-sm text-mail-blue-600 font-bold text-xs uppercase tracking-widest">
+                  <svg class="animate-spin h-4 w-4 text-mail-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span>{{ t('common.loading') }}</span>
+                </div>
+              </td>
+            </tr>
+
             <tr v-if="filteredItems.length === 0 && !loading">
-              <td colspan="6" class="px-8 py-20 text-center text-slate-400 font-bold italic">
+              <td colspan="7" class="px-8 py-20 text-center text-slate-400 font-bold italic">
                 {{ searchQuery ? t('mailboxes.empty.search') : t('mailboxes.empty.section') }}
               </td>
             </tr>
@@ -374,9 +387,6 @@ const fetchData = async (reset = true) => {
   loading.value = true
   if (reset) {
     currentPage.value = 1
-    mailboxes.value = []
-    aliases.value = []
-    domainAliases.value = []
   }
 
   // Обновляем статистику выбранного домена
@@ -387,7 +397,7 @@ const fetchData = async (reset = true) => {
 
   try {
     const params = {
-      page: currentPage.value,
+      page: reset ? 1 : currentPage.value,
       limit: pageSize.value,
       search: searchQuery.value?.trim() || undefined,
       domain: searchQuery.value?.trim() ? undefined : selectedDomain.value,
@@ -402,18 +412,20 @@ const fetchData = async (reset = true) => {
     ])
 
     if (reset) {
-      mailboxes.value = boxesRes.data
-      aliases.value = aliasesRes.data
-      domainAliases.value = domAliasesRes.data
+      currentPage.value = 1
+      mailboxes.value = boxesRes.data || []
+      aliases.value = aliasesRes.data || []
+      domainAliases.value = domAliasesRes.data || []
     } else {
-      mailboxes.value = [...mailboxes.value, ...boxesRes.data]
-      aliases.value = [...aliases.value, ...aliasesRes.data]
-      domainAliases.value = [...domainAliases.value, ...domAliasesRes.data]
+      mailboxes.value = [...mailboxes.value, ...(boxesRes.data || [])]
+      aliases.value = [...aliases.value, ...(aliasesRes.data || [])]
+      domainAliases.value = [...domainAliases.value, ...(domAliasesRes.data || [])]
     }
 
     // Простая логика "есть еще"
-    hasMore.value = boxesRes.data.length === pageSize.value || 
-                    aliasesRes.data.length === pageSize.value
+    const bLen = boxesRes.data?.length || 0
+    const aLen = aliasesRes.data?.length || 0
+    hasMore.value = bLen === pageSize.value || aLen === pageSize.value
                     
   } catch (err) {
     console.error('Error fetching data:', err)

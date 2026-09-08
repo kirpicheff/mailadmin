@@ -47,8 +47,8 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 
 		// Если есть поиск - ищем по всем доступным доменам
 		if search != "" {
-			s := "%" + search + "%"
-			dbQuery = dbQuery.Where("(mailbox.username LIKE ? OR mailbox.name LIKE ?)", s, s)
+			s := "%" + strings.ToLower(search) + "%"
+			dbQuery = dbQuery.Where("(LOWER(mailbox.username) LIKE ? OR LOWER(mailbox.name) LIKE ?)", s, s)
 		} else if domain != "" {
 			dbQuery = dbQuery.Where("mailbox.domain = ?", domain)
 		} else {
