@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/base64"
 	"fmt"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -183,8 +184,11 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 
 		tx.Commit()
 
+		// Извлекаем URL веб-клиента из хоста запроса (или домена ящика)
+		webmailURL := getWebmailURL(c.Request().Host, box.Domain)
+
 		// Асинхронная отправка уведомлений
-		go func(username, rawPassword, name, domainName string) {
+		go func(username, rawPassword, name, domainName, webmail string) {
 			// 1. Рассылка суперадминам (с логином и паролем)
 			var superAdmins []models.Admin
 			if err := db.DB.Where("superadmin = ? AND active = ?", true, true).Find(&superAdmins).Error; err == nil {
@@ -207,9 +211,9 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 						"Здравствуйте!\r\n\r\nВ домене %s был создан новый почтовый ящик:\r\n"+
 							"Адрес: %s\r\n"+
 							"Пароль: %s\r\n"+
-							"Владелец: %s\r\n\r\n"+
+							"Веб-клиент: %s\r\n\r\n"+
 							"Сообщение создано автоматически почтовой панелью управления.",
-						domainName, username, rawPassword, name,
+						domainName, username, rawPassword, webmail,
 					)
 
 					encodedBody := base64.StdEncoding.EncodeToString([]byte(body))
@@ -253,7 +257,7 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 					})
 				}
 			}
-		}(box.Username, req.Password, box.Name, box.Domain)
+		}(box.Username, req.Password, box.Name, box.Domain, webmailURL)
 
 		audit.Log(db.DB, claims.Username, box.Domain, "create mailbox", box.Username)
 
@@ -314,7 +318,8 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 
 		// Если пароль изменен, асинхронно отправляем уведомление глобальным администраторам
 		if req.Password != "" {
-			go func(username, rawPassword, name, domainName string) {
+			webmailURL := getWebmailURL(c.Request().Host, existing.Domain)
+			go func(username, rawPassword, name, domainName, webmail string) {
 				var superAdmins []models.Admin
 				if err := db.DB.Where("superadmin = ? AND active = ?", true, true).Find(&superAdmins).Error; err == nil {
 					for _, admin := range superAdmins {
@@ -335,9 +340,9 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 							"Здравствуйте!\r\n\r\nВ домене %s был изменен пароль для почтового ящика:\r\n"+
 								"Адрес: %s\r\n"+
 								"Новый пароль: %s\r\n"+
-								"Владелец: %s\r\n\r\n"+
+								"Веб-клиент: %s\r\n\r\n"+
 								"Сообщение создано автоматически почтовой панелью управления.",
-							domainName, username, rawPassword, name,
+							domainName, username, rawPassword, webmail,
 						)
 
 						encodedBody := base64.StdEncoding.EncodeToString([]byte(body))
@@ -351,7 +356,7 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 						})
 					}
 				}
-			}(existing.Username, req.Password, existing.Name, existing.Domain)
+			}(existing.Username, req.Password, existing.Name, existing.Domain, webmailURL)
 		}
 
 		audit.Log(db.DB, claims.Username, existing.Domain, "update mailbox", existing.Username)
@@ -581,3 +586,28 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 		return c.JSON(http.StatusOK, map[string]string{"message": "password updated"})
 	})
 }
+
+// getWebmailURL формирует адрес веб-почты на основе хоста MailAdmin или домена ящика
+func getWebmailURL(requestHost, mailboxDomain string) string {
+	host := requestHost
+	if h, _, err := net.SplitHostPort(requestHost); err == nil {
+		host = h
+	}
+
+	// Если хост отсутствует, либо localhost/IP — используем домен почтового ящика
+	if host == "" || host == "localhost" || net.ParseIP(host) != nil {
+		return fmt.Sprintf("https://webmail.%s/", mailboxDomain)
+	}
+
+	parts := strings.Split(host, ".")
+	// Если хост состоит из 3+ частей (например, mail.domain.ru или admin.domain.com),
+	// выделяем базовый домен (последние 2 части) и подставляем субдомен webmail
+	if len(parts) >= 3 {
+		baseDomain := strings.Join(parts[len(parts)-2:], ".")
+		return fmt.Sprintf("https://webmail.%s/", baseDomain)
+	}
+
+	// Если хост вида domain.ru, добавляем webmail.
+	return fmt.Sprintf("https://webmail.%s/", host)
+}
+
