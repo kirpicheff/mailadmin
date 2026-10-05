@@ -83,6 +83,15 @@ func RegisterAliasHandlers(g *echo.Group, secret string) {
 		if err := c.Bind(&req); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
 		}
+		// Защита от случайного ввода полного email с повтором домена
+		req.Address = strings.ToLower(strings.TrimSpace(req.Address))
+		req.Domain = strings.ToLower(strings.TrimSpace(req.Domain))
+		if atCount := strings.Count(req.Address, "@"); atCount > 1 {
+			firstAt := strings.Index(req.Address, "@")
+			lastAt := strings.LastIndex(req.Address, "@")
+			req.Address = req.Address[:firstAt] + "@" + req.Address[lastAt+1:]
+		}
+
 		if err := c.Validate(&req); err != nil {
 			return err
 		}

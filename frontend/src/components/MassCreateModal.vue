@@ -23,7 +23,7 @@
         
         <div class="space-y-3">
           <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">{{ t('mailboxes.mass_modal.prefixes_label') }}</label>
-          <textarea v-model="rawPrefixes" :placeholder="t('mailboxes.mass_modal.prefixes_hint')" required rows="5"
+          <textarea :value="rawPrefixes" @input="onPrefixesInput" :placeholder="t('mailboxes.mass_modal.prefixes_hint')" required rows="5"
             class="w-full px-6 py-4 rounded-3xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 text-slate-900 dark:text-white focus:border-indigo-500 transition-all outline-none font-bold text-sm leading-relaxed"></textarea>
         </div>
 
@@ -88,6 +88,15 @@ const { t } = useI18n()
 const loading = ref(false)
 const rawPrefixes = ref('')
 
+// Принудительный перевод префиксов в нижний регистр на лету при вводе
+const onPrefixesInput = (e) => {
+  const val = (e?.target?.value || '').toLowerCase()
+  if (e?.target) {
+    e.target.value = val
+  }
+  rawPrefixes.value = val
+}
+
 const form = reactive({
   password: '',
   quota: 1024,
@@ -113,9 +122,9 @@ const save = async () => {
   loading.value = true
   try {
     // Парсим префиксы
-    const prefixes = rawPrefixes.value
+    const prefixes = (rawPrefixes.value || '')
       .split(/[\n,;]/)
-      .map(s => s.trim())
+      .map(s => s.trim().toLowerCase())
       .filter(s => s)
 
     if (prefixes.length === 0) return

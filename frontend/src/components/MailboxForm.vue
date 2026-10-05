@@ -28,7 +28,7 @@
               <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 ml-1">{{ t('mailbox_form.address_label') }}</label>
               <div class="flex items-center gap-3">
                 <div class="relative flex-1 group">
-                  <input v-model="localPart" :disabled="isEdit" type="text" :placeholder="t('mailbox_form.address_placeholder')" required
+                  <input :value="localPart" @input="onLocalPartInput" :disabled="isEdit" type="text" :placeholder="t('mailbox_form.address_placeholder')" required
                     class="w-full px-5 py-3.5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 text-slate-900 dark:text-white focus:border-mail-blue-500 transition-all outline-none font-bold" />
                 </div>
                 <div class="relative w-48">
@@ -139,6 +139,26 @@ const form = reactive({
   active: true
 })
 
+// Принудительный перевод в нижний регистр и отсечение домена на лету при вводе
+const onLocalPartInput = (e) => {
+  let val = (e?.target?.value || '').toLowerCase()
+  if (val.includes('@')) {
+    const parts = val.split('@')
+    val = parts[0].trim()
+    const domainPart = parts.slice(1).join('@').trim()
+    if (domainPart && domains.value && domains.value.length > 0) {
+      const matchedDomain = domains.value.find(d => d.domain.toLowerCase() === domainPart.toLowerCase())
+      if (matchedDomain) {
+        targetDomain.value = matchedDomain.domain
+      }
+    }
+  }
+  if (e?.target) {
+    e.target.value = val
+  }
+  localPart.value = val
+}
+
 onMounted(async () => {
   // Загружаем список доменов для выбора
   try {
@@ -172,7 +192,16 @@ const generatePassword = () => {
 const save = async () => {
   loading.value = true
   try {
-    form.username = `${localPart.value}@${targetDomain.value}`
+    let cleanLocal = (localPart.value || '').toLowerCase().trim()
+    let cleanDomain = (targetDomain.value || '').toLowerCase().trim()
+    if (cleanLocal.includes('@')) {
+      const parts = cleanLocal.split('@')
+      cleanLocal = parts[0].trim()
+      if (!cleanDomain && parts[1]) {
+        cleanDomain = parts[1].trim()
+      }
+    }
+    form.username = `${cleanLocal}@${cleanDomain}`
     form.quota = quotaMb.value * 1024 * 1024
 
     if (isEdit.value) {

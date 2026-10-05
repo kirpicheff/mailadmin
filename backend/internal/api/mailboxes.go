@@ -109,6 +109,15 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 		if err := c.Bind(&req); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
 		}
+
+		// Защита от случайного ввода полного email с повтором домена
+		req.Username = strings.ToLower(strings.TrimSpace(req.Username))
+		if atCount := strings.Count(req.Username, "@"); atCount > 1 {
+			firstAt := strings.Index(req.Username, "@")
+			lastAt := strings.LastIndex(req.Username, "@")
+			req.Username = req.Username[:firstAt] + "@" + req.Username[lastAt+1:]
+		}
+
 		if err := c.Validate(&req); err != nil {
 			return err
 		}
@@ -116,8 +125,8 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 		// Валидация username (должен быть email) - мы уже проверили тегом email,
 		// но нам нужны части для maildir
 		parts := strings.Split(req.Username, "@")
-		localPart := parts[0]
-		domain := parts[1]
+		localPart := strings.ToLower(strings.TrimSpace(parts[0]))
+		domain := strings.ToLower(strings.TrimSpace(parts[1]))
 
 		claims := c.Get("user").(*auth.Claims)
 		if !hasDomainAccess(claims, domain) {
@@ -428,11 +437,14 @@ func RegisterMailboxHandlers(g *echo.Group, secret string) {
 
 		createdCount := 0
 		for _, prefix := range req.Prefixes {
-			prefix = strings.TrimSpace(prefix)
+			prefix = strings.ToLower(strings.TrimSpace(prefix))
+			if strings.Contains(prefix, "@") {
+				prefix = strings.Split(prefix, "@")[0]
+			}
 			if prefix == "" {
 				continue
 			}
-			username := prefix + "@" + req.Domain
+			username := prefix + "@" + strings.ToLower(strings.TrimSpace(req.Domain))
 			box := models.Mailbox{
 				Username:  username,
 				Password:  hash,
